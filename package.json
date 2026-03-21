@@ -10,7 +10,9 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "fmt": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,yaml,yml}\"",
-    "fmt:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,yaml,yml}\""
+    "fmt:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx,css,yaml,yml}\"",
+    "db:push": "pnpm --filter @expedition/job-manager db:push",
+    "db:studio": "pnpm --filter @expedition/job-manager db:studio"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

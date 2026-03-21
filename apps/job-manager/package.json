@@ -4,12 +4,18 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts"
+    "start": "tsx src/index.ts",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@expedition/shared": "workspace:*",
     "@hono/node-server": "^1",
+    "drizzle-orm": "^0.45.1",
     "hono": "^4",
     "mysql2": "^3"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10"
   }
 }

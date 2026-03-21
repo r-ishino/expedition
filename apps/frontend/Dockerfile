@@ -11,6 +11,7 @@ RUN pnpm install --frozen-lockfile
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app ./
+COPY tsconfig.base.json ./
 COPY packages/shared/ ./packages/shared/
 COPY apps/frontend/ ./apps/frontend/
 WORKDIR /app/apps/frontend
