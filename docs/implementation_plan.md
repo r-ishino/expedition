@@ -137,7 +137,9 @@ PoCが成功した前提で、以下の順で本機能を実装していく。
 ## 備考
 
 - PoCはすべて `apps/job-manager`（バックエンド）+ `apps/frontend`（最小UI）で実装する
-- PoCのコードはそのまま本実装に流用する（使い捨てにしない）
+- PoCのコードの流用方針:
+  - `apps/job-manager`: そのまま本実装に流用する（レイヤー分離済みで拡張しやすい）
+  - `apps/frontend`: 本実装で作り直す（PoCは動作確認用の最小UIのため）
 - 各PoCの完了基準は「ブラウザで動作確認できること」
 - PoCで想定通りに動かなかった場合の代替案:
   - Claude Code CLIが使いにくい → Claude API（Anthropic SDK）を直接使う
