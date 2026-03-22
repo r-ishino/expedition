@@ -4,13 +4,13 @@
 
 ## 技術スタック
 
-| レイヤー | 技術 |
-|---------|------|
-| Frontend | Next.js 16 / React 19 / Tailwind CSS 4 |
-| Backend | Hono (Node.js) |
-| Database | MySQL 8.0 |
-| Language | TypeScript |
-| Package Manager | pnpm (monorepo) |
+| レイヤー        | 技術                                   |
+| --------------- | -------------------------------------- |
+| Frontend        | Next.js 16 / React 19 / Tailwind CSS 4 |
+| Backend         | Hono (Node.js)                         |
+| Database        | MySQL 8.0                              |
+| Language        | TypeScript                             |
+| Package Manager | pnpm (monorepo)                        |
 
 ## プロジェクト構成
 
@@ -73,12 +73,12 @@ pnpm fmt:check   # Prettier (チェックのみ)
 
 job-manager はデフォルト値が設定されているため、基本的にそのまま動作します。
 
-| 変数 | デフォルト値 | 説明 |
-|------|-------------|------|
-| `PORT` | `33333` | job-manager のポート |
-| `CORS_ORIGIN` | `http://localhost:3333` | CORS 許可オリジン |
-| `DB_HOST` | `localhost` | MySQL ホスト |
-| `DB_PORT` | `33336` | MySQL ポート |
-| `DB_USER` | `root` | MySQL ユーザー |
-| `DB_PASSWORD` | `expedition` | MySQL パスワード |
-| `DB_NAME` | `expedition` | MySQL データベース名 |
+| 変数          | デフォルト値            | 説明                 |
+| ------------- | ----------------------- | -------------------- |
+| `PORT`        | `33333`                 | job-manager のポート |
+| `CORS_ORIGIN` | `http://localhost:3333` | CORS 許可オリジン    |
+| `DB_HOST`     | `localhost`             | MySQL ホスト         |
+| `DB_PORT`     | `33336`                 | MySQL ポート         |
+| `DB_USER`     | `root`                  | MySQL ユーザー       |
+| `DB_PASSWORD` | `expedition`            | MySQL パスワード     |
+| `DB_NAME`     | `expedition`            | MySQL データベース名 |

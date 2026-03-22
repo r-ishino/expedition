@@ -18,13 +18,13 @@ MySQL 8.0 を Docker で使用。ORM は [Drizzle ORM](https://orm.drizzle.team/
 
 ### 接続情報
 
-| 項目 | デフォルト値 | 環境変数 |
-|------|-------------|----------|
-| Host | localhost | `DB_HOST` |
-| Port | 33336 | `DB_PORT` |
-| User | root | `DB_USER` |
-| Password | expedition | `DB_PASSWORD` |
-| Database | expedition | `DB_NAME` |
+| 項目     | デフォルト値 | 環境変数      |
+| -------- | ------------ | ------------- |
+| Host     | localhost    | `DB_HOST`     |
+| Port     | 33336        | `DB_PORT`     |
+| User     | root         | `DB_USER`     |
+| Password | expedition   | `DB_PASSWORD` |
+| Database | expedition   | `DB_NAME`     |
 
 ### スキーマ管理（push モード）
 
@@ -50,9 +50,9 @@ pnpm db:studio
 
 ```typescript
 // src/db/schema.ts
-export const jobs = mysqlTable("jobs", {
+export const jobs = mysqlTable('jobs', {
   // ... 既存カラム
-  priority: int("priority").notNull().default(0),  // 追加
+  priority: int('priority').notNull().default(0), // 追加
 });
 ```
 
@@ -63,18 +63,20 @@ pnpm db:push  # ALTER TABLE が自動実行される
 ### DB の使い方
 
 ```typescript
-import { db } from "~/db";
-import { jobs } from "~/db/schema";
-import { eq } from "drizzle-orm";
+import { db } from '~/db';
+import { jobs } from '~/db/schema';
+import { eq } from 'drizzle-orm';
 
 // INSERT
-await db.insert(jobs).values({ id, status: "running", prompt, stdout: "", stderr: "" });
+await db
+  .insert(jobs)
+  .values({ id, status: 'running', prompt, stdout: '', stderr: '' });
 
 // SELECT
 const job = await db.select().from(jobs).where(eq(jobs.id, id));
 
 // UPDATE
-await db.update(jobs).set({ status: "completed" }).where(eq(jobs.id, id));
+await db.update(jobs).set({ status: 'completed' }).where(eq(jobs.id, id));
 ```
 
 ## 開発コマンド

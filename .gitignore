@@ -44,6 +44,9 @@ yarn-error.log*
 # claude
 CLAUDE.md
 
+# worktrees (PoC-3)
+.worktrees/
+
 # vercel
 .vercel
 

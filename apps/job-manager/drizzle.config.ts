@@ -1,9 +1,9 @@
-import { config } from "./src/config";
-import { defineConfig } from "drizzle-kit";
+import { config } from './src/config';
+import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
-  dialect: "mysql",
-  schema: "./src/db/schema.ts",
+  dialect: 'mysql',
+  schema: './src/db/schema.ts',
   dbCredentials: {
     host: config.db.host,
     port: config.db.port,

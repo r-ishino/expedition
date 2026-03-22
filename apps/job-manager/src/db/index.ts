@@ -1,6 +1,6 @@
-import { drizzle } from "drizzle-orm/mysql2";
-import mysql from "mysql2/promise";
-import { config } from "~/config";
+import { drizzle } from 'drizzle-orm/mysql2';
+import mysql from 'mysql2/promise';
+import { config } from '~/config';
 import {
   camps,
   challenges,
@@ -9,7 +9,7 @@ import {
   journals,
   quests,
   waypoints,
-} from "./schema";
+} from './schema';
 
 const pool = mysql.createPool(config.db);
 
@@ -23,4 +23,4 @@ const schema = {
   waypoints,
 };
 
-export const db = drizzle(pool, { schema, mode: "default" });
+export const db = drizzle(pool, { schema, mode: 'default' });

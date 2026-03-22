@@ -1,7 +1,8 @@
-import { EventEmitter } from "node:events";
-import { spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import type { JobResponse, JobStreamEvent } from "@expedition/shared";
+import { EventEmitter } from 'node:events';
+import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import type { JobResponse, JobStreamEvent } from '@expedition/shared';
+import { createWorktree, removeWorktree } from './worktree';
 
 // インメモリでジョブを管理（PoC用）
 // TODO: post-PoC で repos/jobs.repo.ts に置き換えてMySQL永続化する
@@ -11,8 +12,7 @@ const jobs = new Map<string, JobResponse>();
 // イベント名: ジョブID
 const jobEmitters = new Map<string, EventEmitter>();
 
-export const getJob = (id: string): JobResponse | undefined =>
-  jobs.get(id);
+export const getJob = (id: string): JobResponse | undefined => jobs.get(id);
 
 export const getAllJobs = (): JobResponse[] => [...jobs.values()];
 
@@ -20,14 +20,14 @@ export const getJobEmitter = (id: string): EventEmitter | undefined =>
   jobEmitters.get(id);
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null;
+  typeof v === 'object' && v !== null;
 
 const getString = (
   obj: Record<string, unknown>,
   key: string
 ): string | undefined => {
   const val = obj[key];
-  return typeof val === "string" ? val : undefined;
+  return typeof val === 'string' ? val : undefined;
 };
 
 const getNumber = (
@@ -35,7 +35,7 @@ const getNumber = (
   key: string
 ): number | undefined => {
   const val = obj[key];
-  return typeof val === "number" ? val : undefined;
+  return typeof val === 'number' ? val : undefined;
 };
 
 const getBoolean = (
@@ -43,7 +43,7 @@ const getBoolean = (
   key: string
 ): boolean | undefined => {
   const val = obj[key];
-  return typeof val === "boolean" ? val : undefined;
+  return typeof val === 'boolean' ? val : undefined;
 };
 
 const getRecord = (
@@ -60,89 +60,109 @@ const handleStreamJson = (
   job: JobResponse,
   emitter: EventEmitter
 ): void => {
-  const type = getString(parsed, "type");
+  const type = getString(parsed, 'type');
 
-  if (type === "stream_event") {
-    const event = getRecord(parsed, "event");
+  if (type === 'stream_event') {
+    const event = getRecord(parsed, 'event');
     if (!event) return;
 
-    const eventType = getString(event, "type");
+    const eventType = getString(event, 'type');
 
-    if (eventType === "content_block_delta") {
-      const delta = getRecord(event, "delta");
-      if (delta && getString(delta, "type") === "text_delta") {
-        const text = getString(delta, "text");
+    if (eventType === 'content_block_delta') {
+      const delta = getRecord(event, 'delta');
+      if (delta && getString(delta, 'type') === 'text_delta') {
+        const text = getString(delta, 'text');
         if (!text) return;
 
         job.stdout += text;
 
         const streamEvent: JobStreamEvent = {
-          type: "delta",
+          type: 'delta',
           text,
         };
-        emitter.emit("stream", streamEvent);
+        emitter.emit('stream', streamEvent);
       }
     }
-  } else if (type === "result") {
-    const durationMs = getNumber(parsed, "duration_ms") ?? null;
-    const costUsd = getNumber(parsed, "total_cost_usd") ?? null;
-    const isError = getBoolean(parsed, "is_error") === true;
+  } else if (type === 'result') {
+    const durationMs = getNumber(parsed, 'duration_ms') ?? null;
+    const costUsd = getNumber(parsed, 'total_cost_usd') ?? null;
+    const isError = getBoolean(parsed, 'is_error') === true;
 
     job.exitCode = isError ? 1 : 0;
 
     const doneEvent: JobStreamEvent = {
-      type: "done",
-      status: isError ? "failed" : "completed",
+      type: 'done',
+      status: isError ? 'failed' : 'completed',
       exitCode: job.exitCode,
       durationMs,
       costUsd,
     };
-    emitter.emit("stream", doneEvent);
+    emitter.emit('stream', doneEvent);
   }
 };
 
-export const runClaude = (prompt: string): JobResponse => {
+type RunClaudeOptions = {
+  prompt: string;
+  repoPath?: string;
+};
+
+export const runClaude = async (
+  options: RunClaudeOptions
+): Promise<JobResponse> => {
+  const { prompt, repoPath } = options;
   const id = randomUUID();
+
   const job: JobResponse = {
     id,
-    status: "running",
+    status: 'running',
     prompt,
-    stdout: "",
-    stderr: "",
+    stdout: '',
+    stderr: '',
     exitCode: null,
     createdAt: new Date().toISOString(),
     completedAt: null,
+    worktreePath: null,
+    branch: null,
   };
+
+  // repoPath が指定されている場合、worktree を作成
+  if (repoPath) {
+    const worktree = await createWorktree(repoPath, id);
+    job.worktreePath = worktree.path;
+    job.branch = worktree.branch;
+  }
+
   jobs.set(id, job);
 
   const emitter = new EventEmitter();
   jobEmitters.set(id, emitter);
 
   const proc = spawn(
-    "claude",
+    'claude',
     [
-      "-p",
+      '-p',
       prompt,
-      "--output-format",
-      "stream-json",
-      "--verbose",
-      "--include-partial-messages",
+      '--output-format',
+      'stream-json',
+      '--verbose',
+      '--include-partial-messages',
     ],
     {
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env },
+      cwd: job.worktreePath ?? undefined,
     }
   );
 
-  let buffer = "";
+  let buffer = '';
 
-  proc.stdout.on("data", (chunk: Buffer) => {
+  proc.stdout.on('data', (chunk: Buffer) => {
     buffer += chunk.toString();
 
     // 改行区切りで JSON を1行ずつパース
-    const lines = buffer.split("\n");
+    const lines = buffer.split('\n');
     // 最後の不完全な行はバッファに残す
-    buffer = lines.pop() ?? "";
+    buffer = lines.pop() ?? '';
 
     for (const line of lines) {
       if (!line.trim()) continue;
@@ -158,11 +178,30 @@ export const runClaude = (prompt: string): JobResponse => {
     }
   });
 
-  proc.stderr.on("data", (chunk: Buffer) => {
+  proc.stderr.on('data', (chunk: Buffer) => {
     job.stderr += chunk.toString();
   });
 
-  proc.on("close", (code) => {
+  const cleanup = (): void => {
+    // しばらくしてからクリーンアップ（遅延接続に対応）
+    setTimeout(() => {
+      emitter.removeAllListeners();
+      jobEmitters.delete(id);
+    }, 30_000);
+
+    // worktree のクリーンアップ（少し遅延させて確実にプロセスが終了してから）
+    if (repoPath && job.worktreePath && job.branch) {
+      const wtPath = job.worktreePath;
+      const br = job.branch;
+      setTimeout(() => {
+        removeWorktree(repoPath, wtPath, br).catch((err: unknown) => {
+          console.error(`Failed to cleanup worktree ${wtPath}:`, err);
+        });
+      }, 5_000);
+    }
+  };
+
+  proc.on('close', (code) => {
     // バッファに残っている最後の行を処理
     if (buffer.trim()) {
       try {
@@ -176,46 +215,44 @@ export const runClaude = (prompt: string): JobResponse => {
     }
 
     job.exitCode = code;
-    job.status = code === 0 ? "completed" : "failed";
+    job.status = code === 0 ? 'completed' : 'failed';
     job.completedAt = new Date().toISOString();
 
     const doneEvent: JobStreamEvent = {
-      type: "done",
+      type: 'done',
       status: job.status,
       exitCode: job.exitCode,
       durationMs: null,
       costUsd: null,
     };
-    emitter.emit("stream", doneEvent);
-    emitter.emit("end");
+    emitter.emit('stream', doneEvent);
+    emitter.emit('end');
 
-    // しばらくしてからクリーンアップ（遅延接続に対応）
-    setTimeout(() => {
-      emitter.removeAllListeners();
-      jobEmitters.delete(id);
-    }, 30_000);
+    cleanup();
   });
 
-  proc.on("error", (err) => {
+  proc.on('error', (err) => {
     job.stderr += `\nProcess error: ${err.message}`;
-    job.status = "failed";
+    job.status = 'failed';
     job.completedAt = new Date().toISOString();
 
     const errorEvent: JobStreamEvent = {
-      type: "error",
+      type: 'error',
       message: err.message,
     };
-    emitter.emit("stream", errorEvent);
+    emitter.emit('stream', errorEvent);
 
     const doneEvent: JobStreamEvent = {
-      type: "done",
-      status: "failed",
+      type: 'done',
+      status: 'failed',
       exitCode: null,
       durationMs: null,
       costUsd: null,
     };
-    emitter.emit("stream", doneEvent);
-    emitter.emit("end");
+    emitter.emit('stream', doneEvent);
+    emitter.emit('end');
+
+    cleanup();
   });
 
   return job;

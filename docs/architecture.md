@@ -25,11 +25,11 @@
 
 ## コンポーネントの責務
 
-| コンポーネント | 責務 | 技術 |
-|---|---|---|
-| `apps/frontend` | UI の提供。タスク一覧、操作画面、状態の可視化 | Next.js, React, Tailwind CSS |
-| `apps/job-manager` | ジョブのライフサイクル管理。エージェント起動、worktree 管理、外部サービス連携 | Hono, Node.js, mysql2 |
-| `packages/shared` | フロントエンドと job-manager で共有する型定義 | TypeScript |
+| コンポーネント     | 責務                                                                          | 技術                         |
+| ------------------ | ----------------------------------------------------------------------------- | ---------------------------- |
+| `apps/frontend`    | UI の提供。タスク一覧、操作画面、状態の可視化                                 | Next.js, React, Tailwind CSS |
+| `apps/job-manager` | ジョブのライフサイクル管理。エージェント起動、worktree 管理、外部サービス連携 | Hono, Node.js, mysql2        |
+| `packages/shared`  | フロントエンドと job-manager で共有する型定義                                 | TypeScript                   |
 
 ## データの流れ
 
@@ -50,12 +50,12 @@
 
 ## 外部サービス連携
 
-| サービス | 用途 | 連携元 |
-|---|---|---|
-| Jira Cloud | タスク取得・ステータス更新 | job-manager |
-| GitHub | PR 作成・CI 結果取得 | job-manager |
+| サービス    | 用途                         | 連携元      |
+| ----------- | ---------------------------- | ----------- |
+| Jira Cloud  | タスク取得・ステータス更新   | job-manager |
+| GitHub      | PR 作成・CI 結果取得         | job-manager |
 | Claude Code | AI コーディング（CLI spawn） | job-manager |
-| Devin | AI コーディング（API 経由） | job-manager |
+| Devin       | AI コーディング（API 経由）  | job-manager |
 
 ## 設計判断
 
