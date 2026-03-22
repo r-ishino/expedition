@@ -42,6 +42,7 @@ const StatusBadge = ({
   streaming: boolean;
 }): ReactNode => {
   const styles: Record<string, string> = {
+    queued: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
     running:
       'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
     completed:
@@ -53,6 +54,9 @@ const StatusBadge = ({
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status] ?? ''}`}
     >
+      {status === 'queued' && (
+        <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+      )}
       {status === 'running' && streaming && (
         <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-yellow-500" />
       )}
@@ -131,6 +135,10 @@ export const JobForm = (): ReactNode => {
       updateEntry(jobId, (prev) => ({
         ...prev,
         streamedOutput: prev.streamedOutput + data.text,
+        job: {
+          ...prev.job,
+          status: prev.job.status === 'queued' ? 'running' : prev.job.status,
+        },
       }));
     });
 
@@ -197,7 +205,7 @@ export const JobForm = (): ReactNode => {
       setEntries((prev) => [newEntry, ...prev]);
       setPrompt('');
 
-      if (job.status === 'running') {
+      if (job.status === 'running' || job.status === 'queued') {
         startStream(job.id);
       }
     } catch (err) {
@@ -208,6 +216,7 @@ export const JobForm = (): ReactNode => {
   };
 
   const runningCount = entries.filter((e) => e.job.status === 'running').length;
+  const queuedCount = entries.filter((e) => e.job.status === 'queued').length;
 
   return (
     <div className="flex flex-col gap-6 w-full">
@@ -244,9 +253,11 @@ export const JobForm = (): ReactNode => {
             {submitting ? '送信中...' : '実行'}
           </button>
 
-          {runningCount > 0 && (
+          {(runningCount > 0 || queuedCount > 0) && (
             <span className="text-sm text-zinc-500 dark:text-zinc-400">
-              {runningCount} 件実行中
+              {runningCount > 0 && `${runningCount} 件実行中`}
+              {runningCount > 0 && queuedCount > 0 && ' / '}
+              {queuedCount > 0 && `${queuedCount} 件待機中`}
             </span>
           )}
         </div>

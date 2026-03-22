@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import type { JobResponse, JobStreamEvent } from '@expedition/shared';
+import { config } from '../config';
 import { createWorktree, removeWorktree } from './worktree';
 
 // インメモリでジョブを管理（PoC用）
@@ -9,8 +10,21 @@ import { createWorktree, removeWorktree } from './worktree';
 const jobs = new Map<string, JobResponse>();
 
 // ジョブごとのストリームイベントを配信する EventEmitter
-// イベント名: ジョブID
 const jobEmitters = new Map<string, EventEmitter>();
+
+// ジョブごとのオプションを保持（startJob で repoPath を参照するため）
+type RunClaudeOptions = {
+  prompt: string;
+  repoPath?: string;
+};
+
+const jobOptionsMap = new Map<string, RunClaudeOptions>();
+
+// キュー: 上限超過時に待機するジョブID
+const jobQueue: string[] = [];
+
+// ジョブ完了通知用（キュー排出のトリガー）
+const scheduler = new EventEmitter();
 
 export const getJob = (id: string): JobResponse | undefined => jobs.get(id);
 
@@ -18,6 +32,9 @@ export const getAllJobs = (): JobResponse[] => [...jobs.values()];
 
 export const getJobEmitter = (id: string): EventEmitter | undefined =>
   jobEmitters.get(id);
+
+export const getRunningJobCount = (): number =>
+  [...jobs.values()].filter((j) => j.status === 'running').length;
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null;
@@ -101,29 +118,10 @@ const handleStreamJson = (
   }
 };
 
-type RunClaudeOptions = {
-  prompt: string;
-  repoPath?: string;
-};
-
-export const runClaude = async (
-  options: RunClaudeOptions
-): Promise<JobResponse> => {
-  const { prompt, repoPath } = options;
-  const id = randomUUID();
-
-  const job: JobResponse = {
-    id,
-    status: 'running',
-    prompt,
-    stdout: '',
-    stderr: '',
-    exitCode: null,
-    createdAt: new Date().toISOString(),
-    completedAt: null,
-    worktreePath: null,
-    branch: null,
-  };
+/** ジョブのプロセスを起動する（worktree 作成含む） */
+const startJob = async (job: JobResponse): Promise<void> => {
+  const { id, prompt } = job;
+  const repoPath = jobOptionsMap.get(id)?.repoPath;
 
   // repoPath が指定されている場合、worktree を作成
   if (repoPath) {
@@ -132,9 +130,9 @@ export const runClaude = async (
     job.branch = worktree.branch;
   }
 
-  jobs.set(id, job);
+  job.status = 'running';
 
-  const emitter = new EventEmitter();
+  const emitter = jobEmitters.get(id) ?? new EventEmitter();
   jobEmitters.set(id, emitter);
 
   const proc = spawn(
@@ -199,6 +197,9 @@ export const runClaude = async (
         });
       }, 5_000);
     }
+
+    // 完了を通知してキュー排出をトリガー
+    scheduler.emit('job-completed');
   };
 
   proc.on('close', (code) => {
@@ -254,6 +255,76 @@ export const runClaude = async (
 
     cleanup();
   });
+};
+
+/** キューから次のジョブを取り出して起動する */
+const drainQueue = (): void => {
+  while (
+    jobQueue.length > 0 &&
+    getRunningJobCount() < config.jobs.maxConcurrent
+  ) {
+    const nextId = jobQueue.shift();
+    if (!nextId) break;
+
+    const job = jobs.get(nextId);
+    if (!job || job.status !== 'queued') continue;
+
+    startJob(job).catch((err: unknown) => {
+      console.error(`Failed to start queued job ${nextId}:`, err);
+      job.status = 'failed';
+      job.completedAt = new Date().toISOString();
+      job.stderr = err instanceof Error ? err.message : 'Failed to start job';
+
+      const emitter = jobEmitters.get(nextId);
+      if (emitter) {
+        const errorEvent: JobStreamEvent = {
+          type: 'error',
+          message: job.stderr,
+        };
+        emitter.emit('stream', errorEvent);
+        emitter.emit('end');
+      }
+    });
+  }
+};
+
+// ジョブ完了時にキューを排出
+scheduler.on('job-completed', drainQueue);
+
+export const runClaude = async (
+  options: RunClaudeOptions
+): Promise<JobResponse> => {
+  const { prompt } = options;
+  const id = randomUUID();
+
+  const job: JobResponse = {
+    id,
+    status: 'queued',
+    prompt,
+    stdout: '',
+    stderr: '',
+    exitCode: null,
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+    worktreePath: null,
+    branch: null,
+  };
+
+  jobs.set(id, job);
+  jobOptionsMap.set(id, options);
+
+  const emitter = new EventEmitter();
+  jobEmitters.set(id, emitter);
+
+  // 枠が空いていれば即座に起動、なければキューに追加
+  if (getRunningJobCount() < config.jobs.maxConcurrent) {
+    await startJob(job);
+  } else {
+    jobQueue.push(id);
+    console.log(
+      `Job ${id} queued (${jobQueue.length} in queue, ${getRunningJobCount()} running)`
+    );
+  }
 
   return job;
 };

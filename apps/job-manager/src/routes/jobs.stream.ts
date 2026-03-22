@@ -14,7 +14,7 @@ app.get('/:id/stream', (c) => {
   }
 
   // すでに完了済みのジョブは即座に done を返して終了
-  if (job.status !== 'running') {
+  if (job.status === 'completed' || job.status === 'failed') {
     return streamSSE(c, async (stream) => {
       // 蓄積済みの stdout があればまとめて送信
       if (job.stdout) {

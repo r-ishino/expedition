@@ -12,4 +12,9 @@ export const config = {
     password: process.env.DB_PASSWORD ?? 'expedition',
     database: process.env.DB_NAME ?? 'expedition',
   },
+
+  jobs: {
+    /** 同時実行可能なジョブの最大数 */
+    maxConcurrent: Number(process.env.MAX_CONCURRENT_JOBS ?? 3),
+  },
 } as const;

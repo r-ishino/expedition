@@ -9,7 +9,7 @@ export type JobRequest = {
   repoPath?: string;
 };
 
-export type JobStatus = 'running' | 'completed' | 'failed';
+export type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
 
 export type JobResponse = {
   id: string;
