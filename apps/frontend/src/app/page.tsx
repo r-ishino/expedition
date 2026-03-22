@@ -10,12 +10,20 @@ const Home = (): ReactNode => (
       <p className="text-lg text-zinc-600 dark:text-zinc-400">
         AI Agent Orchestration Platform
       </p>
-      <Link
-        className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-        href="/jobs"
-      >
-        Claude Code Runner
-      </Link>
+      <div className="flex gap-4">
+        <Link
+          className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          href="/quests"
+        >
+          Quests
+        </Link>
+        <Link
+          className="rounded-lg border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          href="/jobs"
+        >
+          Claude Code Runner
+        </Link>
+      </div>
     </main>
   </div>
 );

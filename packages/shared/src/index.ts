@@ -61,3 +61,37 @@ export type JobStreamError = {
 };
 
 export type JobStreamEvent = JobStreamDelta | JobStreamDone | JobStreamError;
+
+// Quest（依頼）
+
+export type QuestStatus = 'draft' | 'decomposing' | 'decomposed';
+
+export type Quest = {
+  id: string;
+  jiraIssueKey: string | null;
+  title: string;
+  description: string | null;
+  status: QuestStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type QuestRequest = {
+  title: string;
+  description?: string;
+};
+
+// Waypoint（中間地点）
+
+export type WaypointStatus = 'pending';
+
+export type Waypoint = {
+  id: string;
+  questId: string;
+  title: string;
+  description: string | null;
+  status: WaypointStatus;
+  challengeId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};

@@ -6,6 +6,7 @@ import { app as healthApp } from './routes/health';
 import { app as jobsApp } from './routes/jobs';
 import { app as jobsStreamApp } from './routes/jobs.stream';
 import { app as territoriesApp } from './routes/territories';
+import { app as questsApp } from './routes/quests';
 import { findAllTerritories } from './repos/territories.repo';
 import { cleanupOrphanWorktrees } from './services/worktree';
 
@@ -18,8 +19,7 @@ app.route('/api/territories', territoriesApp);
 app.route('/api/jobs', jobsStreamApp);
 app.route('/api/jobs', jobsApp);
 
-// TODO [post-PoC]: タスク管理
-// app.route("/api/tasks", tasksApp);
+app.route('/api/quests', questsApp);
 
 const start = async (): Promise<void> => {
   // 登録済み territory すべての孤児 worktree をクリーンアップ
