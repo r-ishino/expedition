@@ -6,7 +6,20 @@ export type HealthStatus = {
 
 export type JobRequest = {
   prompt: string;
-  repoPath?: string;
+  territoryId?: string;
+};
+
+export type Territory = {
+  id: string;
+  name: string;
+  path: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TerritoryRequest = {
+  name: string;
+  path: string;
 };
 
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed';

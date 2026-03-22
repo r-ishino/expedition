@@ -8,6 +8,7 @@ import type {
   JobStreamDone,
   JobStreamError,
 } from '@expedition/shared';
+import { useTerritories } from '~/hooks/api/useTerritories';
 
 const JOB_MANAGER_URL = 'http://localhost:33333';
 
@@ -111,11 +112,13 @@ const JobCard = ({ entry }: { entry: JobEntry }): ReactNode => {
 
 export const JobForm = (): ReactNode => {
   const [prompt, setPrompt] = useState('');
-  const [repoPath, setRepoPath] = useState('');
+  const [territoryId, setTerritoryId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [entries, setEntries] = useState<JobEntry[]>([]);
   const eventSourcesRef = useRef<Map<string, EventSource>>(new Map());
+
+  const { data: territories = [] } = useTerritories().useIndex();
 
   const updateEntry = (
     jobId: string,
@@ -193,7 +196,7 @@ export const JobForm = (): ReactNode => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: prompt,
-          repoPath: repoPath.trim() || undefined,
+          territoryId: territoryId || undefined,
         }),
       });
 
@@ -233,14 +236,19 @@ export const JobForm = (): ReactNode => {
         </label>
 
         <label className="flex flex-col gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Repository Path
-          <input
-            className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder-zinc-500 font-normal font-mono"
-            onChange={(e) => setRepoPath(e.target.value)}
-            placeholder="/path/to/repo（空欄でworktreeなし）"
-            type="text"
-            value={repoPath}
-          />
+          Repository
+          <select
+            className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm text-zinc-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+            onChange={(e) => setTerritoryId(e.target.value)}
+            value={territoryId}
+          >
+            <option value="">worktreeなし</option>
+            {territories.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name} ({t.path})
+              </option>
+            ))}
+          </select>
         </label>
 
         <div className="flex items-center gap-3">

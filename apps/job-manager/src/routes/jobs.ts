@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { JobRequest } from '@expedition/shared';
 import { runClaude, getJob, getAllJobs } from '../services/claude-runner';
+import { findTerritoryById } from '../repos/territories.repo';
 
 const app = new Hono();
 
@@ -11,9 +12,19 @@ app.post('/', async (c) => {
     return c.json({ error: 'prompt is required' }, 400);
   }
 
+  let repoPath: string | undefined;
+
+  if (body.territoryId) {
+    const territory = await findTerritoryById(body.territoryId);
+    if (!territory) {
+      return c.json({ error: 'territory not found' }, 404);
+    }
+    repoPath = territory.path;
+  }
+
   const job = await runClaude({
     prompt: body.prompt,
-    repoPath: body.repoPath,
+    repoPath,
   });
   return c.json(job, 201);
 });

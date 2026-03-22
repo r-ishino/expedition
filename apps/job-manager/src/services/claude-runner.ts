@@ -152,6 +152,22 @@ const startJob = async (job: JobResponse): Promise<void> => {
     }
   );
 
+  // タイムアウト: 設定時間を超えたらプロセスを強制終了
+  const timeoutMs = config.jobs.timeoutMs;
+  let timedOut = false;
+  const timeoutTimer = setTimeout(() => {
+    timedOut = true;
+    job.stderr += `\nJob timed out after ${timeoutMs}ms`;
+    proc.kill('SIGTERM');
+
+    // SIGTERM で終了しない場合に備えて SIGKILL
+    setTimeout(() => {
+      if (!proc.killed) {
+        proc.kill('SIGKILL');
+      }
+    }, 5_000);
+  }, timeoutMs);
+
   let buffer = '';
 
   proc.stdout.on('data', (chunk: Buffer) => {
@@ -203,6 +219,8 @@ const startJob = async (job: JobResponse): Promise<void> => {
   };
 
   proc.on('close', (code) => {
+    clearTimeout(timeoutTimer);
+
     // バッファに残っている最後の行を処理
     if (buffer.trim()) {
       try {
@@ -216,7 +234,7 @@ const startJob = async (job: JobResponse): Promise<void> => {
     }
 
     job.exitCode = code;
-    job.status = code === 0 ? 'completed' : 'failed';
+    job.status = code === 0 && !timedOut ? 'completed' : 'failed';
     job.completedAt = new Date().toISOString();
 
     const doneEvent: JobStreamEvent = {
@@ -233,6 +251,7 @@ const startJob = async (job: JobResponse): Promise<void> => {
   });
 
   proc.on('error', (err) => {
+    clearTimeout(timeoutTimer);
     job.stderr += `\nProcess error: ${err.message}`;
     job.status = 'failed';
     job.completedAt = new Date().toISOString();

@@ -1,5 +1,3 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -7,23 +5,16 @@ import { config } from './config';
 import { app as healthApp } from './routes/health';
 import { app as jobsApp } from './routes/jobs';
 import { app as jobsStreamApp } from './routes/jobs.stream';
+import { app as territoriesApp } from './routes/territories';
+import { findAllTerritories } from './repos/territories.repo';
 import { cleanupOrphanWorktrees } from './services/worktree';
-
-const execFileAsync = promisify(execFile);
-
-const getGitRoot = async (): Promise<string> => {
-  const { stdout } = await execFileAsync('git', [
-    'rev-parse',
-    '--show-toplevel',
-  ]);
-  return stdout.trim();
-};
 
 const app: Hono = new Hono();
 
 app.use('/*', cors({ origin: config.cors.origin }));
 
 app.route('/health', healthApp);
+app.route('/api/territories', territoriesApp);
 app.route('/api/jobs', jobsStreamApp);
 app.route('/api/jobs', jobsApp);
 
@@ -31,8 +22,11 @@ app.route('/api/jobs', jobsApp);
 // app.route("/api/tasks", tasksApp);
 
 const start = async (): Promise<void> => {
-  const repoRoot = await getGitRoot();
-  await cleanupOrphanWorktrees(repoRoot);
+  // 登録済み territory すべての孤児 worktree をクリーンアップ
+  const allTerritories = await findAllTerritories();
+  for (const territory of allTerritories) {
+    await cleanupOrphanWorktrees(territory.path);
+  }
 
   serve({ fetch: app.fetch, port: config.port }, (info) => {
     console.log(`job-manager listening on http://localhost:${info.port}`);

@@ -7,6 +7,17 @@ import {
 } from 'drizzle-orm/mysql-core';
 
 // ------------------------------------------------------------
+// territories — 管理対象リポジトリ（領地）
+// ------------------------------------------------------------
+export const territories = mysqlTable('territories', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  path: varchar('path', { length: 500 }).notNull().unique(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
+});
+
+// ------------------------------------------------------------
 // quests — Jira 課題（依頼）
 // [未確定] カラム構成は Jira 連携実装時に決定
 // ------------------------------------------------------------

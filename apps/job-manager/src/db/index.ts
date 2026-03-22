@@ -8,6 +8,7 @@ import {
   dispatches,
   journals,
   quests,
+  territories,
   waypoints,
 } from './schema';
 
@@ -20,6 +21,7 @@ const schema = {
   dispatches,
   journals,
   quests,
+  territories,
   waypoints,
 };
 
