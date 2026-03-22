@@ -14,15 +14,5 @@ services:
       timeout: 5s
       retries: 10
 
-  frontend:
-    build:
-      context: .
-      dockerfile: apps/frontend/Dockerfile
-    ports:
-      - "3334:3333"
-    depends_on:
-      mysql:
-        condition: service_healthy
-
 volumes:
   mysql_data:

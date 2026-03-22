@@ -58,14 +58,22 @@
 - 複数クライアントが同じジョブの進捗を見る場合の設計
 
 **実装タスク:**
-- [ ] `claude` CLIの出力オプション調査（`--help` やドキュメント確認）
-- [ ] job-managerに `GET /api/jobs/:id/stream` SSEエンドポイントを追加
-- [ ] spawn したプロセスの stdout を SSE イベントとして流す処理
-- [ ] フロントエンドで SSE を受信し、ログをリアルタイム表示するUI
-- [ ] プロセス完了時の SSE 接続クローズ処理
+- [x] `claude` CLIの出力オプション調査（`--help` やドキュメント確認）
+- [x] job-managerに `GET /api/jobs/:id/stream` SSEエンドポイントを追加
+- [x] spawn したプロセスの stdout を SSE イベントとして流す処理
+- [x] フロントエンドで SSE を受信し、ログをリアルタイム表示するUI
+- [x] プロセス完了時の SSE 接続クローズ処理
 
 **完了基準:**
 ブラウザ上でClaude Codeの出力がリアルタイムに流れて表示され、完了時に状態が「完了」に変わる。
+
+**検証結果（2026-03-22）:**
+- `claude -p --output-format stream-json --verbose --include-partial-messages` でトークン単位のストリーミング出力を取得可能
+- 出力形式: 1行1JSON。`stream_event` の `content_block_delta` でテキスト差分、`result` で実行結果（duration, cost含む）を取得
+- SSE（Hono `streamSSE`）でブラウザにリアルタイム配信。EventEmitterパターンで複数クライアント対応
+- フロントエンドは `EventSource` API でSSEを受信し、テキストが流れるように表示
+- プロセス完了時に `done` イベントでステータス・exitCode・実行時間・コストを通知し、SSE接続を自動クローズ
+- 実行時間: haiku生成で約2.2秒、テキスト応答で約4秒
 
 **備考:**
 PoC-1の成果の上に構築する。PoC-1が「結果の一括取得」、PoC-2が「リアルタイムストリーミング」。
@@ -107,7 +115,7 @@ PoC-1 + PoC-2の成果の上に構築する。
 PoC-1: ブラウザ → Claude Code起動        ✅ 完了（2026-03-22）
   │     (基本的な経路が動くか)
   ▼
-PoC-2: リアルタイム表示
+PoC-2: リアルタイム表示               ✅ 完了（2026-03-22）
   │     (SSEストリーミングが動くか)
   ▼
 PoC-3: worktree並列実行

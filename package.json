@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm --parallel -r run dev",
+    "dev": "docker compose up -d && pnpm --parallel -r run dev",
     "dev:frontend": "pnpm --filter @expedition/frontend dev",
     "dev:job-manager": "pnpm --filter @expedition/job-manager dev",
     "build": "pnpm -r run build",

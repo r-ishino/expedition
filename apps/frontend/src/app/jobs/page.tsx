@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { JobForm } from "./job-form";
+import { JobForm } from "./JobForm";
 
 const JobsPage = (): ReactNode => (
   <div className="flex flex-1 flex-col items-center px-6 py-12 font-sans">

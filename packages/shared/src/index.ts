@@ -20,3 +20,31 @@ export type JobResponse = {
   createdAt: string;
   completedAt: string | null;
 };
+
+// PoC-2: SSE ストリーミングイベント型
+
+/** テキスト差分イベント */
+export type JobStreamDelta = {
+  type: "delta";
+  text: string;
+};
+
+/** ジョブ完了イベント */
+export type JobStreamDone = {
+  type: "done";
+  status: JobStatus;
+  exitCode: number | null;
+  durationMs: number | null;
+  costUsd: number | null;
+};
+
+/** エラーイベント */
+export type JobStreamError = {
+  type: "error";
+  message: string;
+};
+
+export type JobStreamEvent =
+  | JobStreamDelta
+  | JobStreamDone
+  | JobStreamError;

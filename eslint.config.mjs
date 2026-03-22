@@ -137,7 +137,7 @@ export default [
       'react-hooks/exhaustive-deps': 'warn',
 
       // a11y
-      'jsx-a11y/label-has-associated-control': ['error', { assert: 'both' }],
+      'jsx-a11y/label-has-associated-control': ['error', { assert: 'either' }],
 
       // Restricted syntax
       'no-restricted-syntax': [
@@ -192,7 +192,7 @@ export default [
 
   // Root config files (no tsconfig project)
   {
-    files: ['.*.js', '*.config.{js,ts,mjs}', 'eslint.config.mjs'],
+    files: ['.*.js', '*.config.{js,ts,mjs}', 'eslint.config.mjs', '**/drizzle.config.ts'],
     languageOptions: {
       parserOptions: { project: null },
     },

@@ -1,14 +1,105 @@
+import { EventEmitter } from "node:events";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import type { JobResponse } from "@expedition/shared";
+import type { JobResponse, JobStreamEvent } from "@expedition/shared";
 
 // インメモリでジョブを管理（PoC用）
 // TODO: post-PoC で repos/jobs.repo.ts に置き換えてMySQL永続化する
 const jobs = new Map<string, JobResponse>();
 
-export const getJob = (id: string): JobResponse | undefined => jobs.get(id);
+// ジョブごとのストリームイベントを配信する EventEmitter
+// イベント名: ジョブID
+const jobEmitters = new Map<string, EventEmitter>();
+
+export const getJob = (id: string): JobResponse | undefined =>
+  jobs.get(id);
 
 export const getAllJobs = (): JobResponse[] => [...jobs.values()];
+
+export const getJobEmitter = (id: string): EventEmitter | undefined =>
+  jobEmitters.get(id);
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null;
+
+const getString = (
+  obj: Record<string, unknown>,
+  key: string
+): string | undefined => {
+  const val = obj[key];
+  return typeof val === "string" ? val : undefined;
+};
+
+const getNumber = (
+  obj: Record<string, unknown>,
+  key: string
+): number | undefined => {
+  const val = obj[key];
+  return typeof val === "number" ? val : undefined;
+};
+
+const getBoolean = (
+  obj: Record<string, unknown>,
+  key: string
+): boolean | undefined => {
+  const val = obj[key];
+  return typeof val === "boolean" ? val : undefined;
+};
+
+const getRecord = (
+  obj: Record<string, unknown>,
+  key: string
+): Record<string, unknown> | undefined => {
+  const val = obj[key];
+  return isRecord(val) ? val : undefined;
+};
+
+/** stream-json の各行を処理し、適切な SSE イベントを発行する */
+const handleStreamJson = (
+  parsed: Record<string, unknown>,
+  job: JobResponse,
+  emitter: EventEmitter
+): void => {
+  const type = getString(parsed, "type");
+
+  if (type === "stream_event") {
+    const event = getRecord(parsed, "event");
+    if (!event) return;
+
+    const eventType = getString(event, "type");
+
+    if (eventType === "content_block_delta") {
+      const delta = getRecord(event, "delta");
+      if (delta && getString(delta, "type") === "text_delta") {
+        const text = getString(delta, "text");
+        if (!text) return;
+
+        job.stdout += text;
+
+        const streamEvent: JobStreamEvent = {
+          type: "delta",
+          text,
+        };
+        emitter.emit("stream", streamEvent);
+      }
+    }
+  } else if (type === "result") {
+    const durationMs = getNumber(parsed, "duration_ms") ?? null;
+    const costUsd = getNumber(parsed, "total_cost_usd") ?? null;
+    const isError = getBoolean(parsed, "is_error") === true;
+
+    job.exitCode = isError ? 1 : 0;
+
+    const doneEvent: JobStreamEvent = {
+      type: "done",
+      status: isError ? "failed" : "completed",
+      exitCode: job.exitCode,
+      durationMs,
+      costUsd,
+    };
+    emitter.emit("stream", doneEvent);
+  }
+};
 
 export const runClaude = (prompt: string): JobResponse => {
   const id = randomUUID();
@@ -24,13 +115,47 @@ export const runClaude = (prompt: string): JobResponse => {
   };
   jobs.set(id, job);
 
-  const proc = spawn("claude", ["-p", prompt], {
-    stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env },
-  });
+  const emitter = new EventEmitter();
+  jobEmitters.set(id, emitter);
+
+  const proc = spawn(
+    "claude",
+    [
+      "-p",
+      prompt,
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--include-partial-messages",
+    ],
+    {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env },
+    }
+  );
+
+  let buffer = "";
 
   proc.stdout.on("data", (chunk: Buffer) => {
-    job.stdout += chunk.toString();
+    buffer += chunk.toString();
+
+    // 改行区切りで JSON を1行ずつパース
+    const lines = buffer.split("\n");
+    // 最後の不完全な行はバッファに残す
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+
+      try {
+        const parsed: unknown = JSON.parse(line);
+        if (isRecord(parsed)) {
+          handleStreamJson(parsed, job, emitter);
+        }
+      } catch {
+        // JSON パース失敗は無視（不完全な行）
+      }
+    }
   });
 
   proc.stderr.on("data", (chunk: Buffer) => {
@@ -38,16 +163,60 @@ export const runClaude = (prompt: string): JobResponse => {
   });
 
   proc.on("close", (code) => {
+    // バッファに残っている最後の行を処理
+    if (buffer.trim()) {
+      try {
+        const parsed: unknown = JSON.parse(buffer);
+        if (isRecord(parsed)) {
+          handleStreamJson(parsed, job, emitter);
+        }
+      } catch {
+        // 無視
+      }
+    }
+
     job.exitCode = code;
     job.status = code === 0 ? "completed" : "failed";
     job.completedAt = new Date().toISOString();
+
+    const doneEvent: JobStreamEvent = {
+      type: "done",
+      status: job.status,
+      exitCode: job.exitCode,
+      durationMs: null,
+      costUsd: null,
+    };
+    emitter.emit("stream", doneEvent);
+    emitter.emit("end");
+
+    // しばらくしてからクリーンアップ（遅延接続に対応）
+    setTimeout(() => {
+      emitter.removeAllListeners();
+      jobEmitters.delete(id);
+    }, 30_000);
   });
 
   proc.on("error", (err) => {
     job.stderr += `\nProcess error: ${err.message}`;
     job.status = "failed";
     job.completedAt = new Date().toISOString();
+
+    const errorEvent: JobStreamEvent = {
+      type: "error",
+      message: err.message,
+    };
+    emitter.emit("stream", errorEvent);
+
+    const doneEvent: JobStreamEvent = {
+      type: "done",
+      status: "failed",
+      exitCode: null,
+      durationMs: null,
+      costUsd: null,
+    };
+    emitter.emit("stream", doneEvent);
+    emitter.emit("end");
   });
 
   return job;
-}
+};
