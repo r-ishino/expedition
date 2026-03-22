@@ -93,3 +93,28 @@ export const listWorktrees = async (
 
   return worktrees;
 };
+
+/**
+ * 孤児 worktree をすべて削除する。
+ * サーバー起動時に前回の残骸を掃除するために使う。
+ */
+export const cleanupOrphanWorktrees = async (
+  repoPath: string
+): Promise<void> => {
+  const worktrees = await listWorktrees(repoPath);
+
+  if (worktrees.length === 0) {
+    return;
+  }
+
+  console.log(`Cleaning up ${worktrees.length} orphan worktree(s)...`);
+
+  for (const wt of worktrees) {
+    try {
+      await removeWorktree(repoPath, wt.path, wt.branch);
+      console.log(`  Removed: ${wt.branch}`);
+    } catch (e) {
+      console.error(`  Failed to remove ${wt.branch}:`, e);
+    }
+  }
+};
