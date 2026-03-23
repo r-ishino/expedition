@@ -74,18 +74,18 @@ vibe-kanban/
 
 ## 調査対象の特定ガイド
 
-| 知りたいこと | 調査先 |
-|---|---|
-| タスク管理・カンバン | `crates/db/`, `crates/services/`, `packages/web-core/src/features/` |
-| エージェント起動・管理 | `crates/executors/`, `crates/services/` |
-| Git 操作・ブランチ管理 | `crates/git/`, `crates/worktree-manager/` |
-| API 設計・型定義 | `crates/api-types/`, `crates/server/` |
-| DB スキーマ・マイグレーション | `crates/db/migrations/` |
-| フロントエンド UI | `packages/web-core/`, `packages/ui/`, `packages/local-web/` |
-| プレビュー機能 | `crates/preview-proxy/` |
-| Diff レビュー | `crates/review/` |
-| MCP 連携 | `crates/mcp/` |
-| デプロイ | `crates/deployment/`, `crates/local-deployment/` |
+| 知りたいこと                  | 調査先                                                              |
+| ----------------------------- | ------------------------------------------------------------------- |
+| タスク管理・カンバン          | `crates/db/`, `crates/services/`, `packages/web-core/src/features/` |
+| エージェント起動・管理        | `crates/executors/`, `crates/services/`                             |
+| Git 操作・ブランチ管理        | `crates/git/`, `crates/worktree-manager/`                           |
+| API 設計・型定義              | `crates/api-types/`, `crates/server/`                               |
+| DB スキーマ・マイグレーション | `crates/db/migrations/`                                             |
+| フロントエンド UI             | `packages/web-core/`, `packages/ui/`, `packages/local-web/`         |
+| プレビュー機能                | `crates/preview-proxy/`                                             |
+| Diff レビュー                 | `crates/review/`                                                    |
+| MCP 連携                      | `crates/mcp/`                                                       |
+| デプロイ                      | `crates/deployment/`, `crates/local-deployment/`                    |
 
 ## 回答のフォーマット
 
