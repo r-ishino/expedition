@@ -8,6 +8,7 @@ import type {
   JobStreamDone,
   JobStreamError,
 } from '@expedition/shared';
+import { Button } from '~/components/Buttons/Button/Button';
 import { useTerritories } from '~/hooks/api/useTerritories';
 
 const JOB_MANAGER_URL = 'http://localhost:33333';
@@ -252,14 +253,9 @@ export const JobForm = (): ReactNode => {
         </label>
 
         <div className="flex items-center gap-3">
-          <button
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={submitting || !prompt.trim()}
-            onClick={submit}
-            type="button"
-          >
+          <Button disabled={submitting || !prompt.trim()} onClick={submit}>
             {submitting ? '送信中...' : '実行'}
-          </button>
+          </Button>
 
           {(runningCount > 0 || queuedCount > 0) && (
             <span className="text-sm text-zinc-500 dark:text-zinc-400">

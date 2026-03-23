@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { Quest, QuestStatus } from '@expedition/shared';
+import { Button } from '~/components/Buttons/Button/Button';
 import { useQuests } from '~/hooks/api/useQuests';
 
 const JOB_MANAGER_URL = 'http://localhost:33333';
@@ -53,16 +54,17 @@ const QuestCard = ({
         </p>
       )}
     </Link>
-    <button
-      className="absolute right-3 top-3 rounded px-2 py-1 text-xs text-red-500 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-700 group-hover:opacity-100 dark:hover:bg-red-950 dark:hover:text-red-300"
+    <Button
+      className="absolute right-3 top-3 opacity-0 group-hover:opacity-100"
       onClick={(e) => {
         e.preventDefault();
         onDelete(quest.id);
       }}
-      type="button"
+      size="sm"
+      variant="dangerGhost"
     >
       削除
-    </button>
+    </Button>
   </div>
 );
 
@@ -141,14 +143,13 @@ const QuestsPage = (): ReactNode => {
             />
           </label>
 
-          <button
-            className="self-start rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          <Button
+            className="self-start"
             disabled={submitting || !title.trim()}
             onClick={submit}
-            type="button"
           >
             {submitting ? '作成中...' : 'Quest を作成'}
-          </button>
+          </Button>
         </div>
 
         {error && (

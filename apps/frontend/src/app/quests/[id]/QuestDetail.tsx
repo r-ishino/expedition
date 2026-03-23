@@ -9,6 +9,8 @@ import type {
   JobStreamDone,
   JobStreamError,
 } from '@expedition/shared';
+import { Button } from '~/components/Buttons/Button/Button';
+import { Modal } from '~/components/Popups/Modal/Modal';
 import { useQuests } from '~/hooks/api/useQuests';
 
 const JOB_MANAGER_URL = 'http://localhost:33333';
@@ -55,46 +57,29 @@ const WaypointModal = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Modal
+      actions={
+        <>
+          <Button onClick={copyToClipboard} size="sm" variant="secondary">
+            {copied ? 'コピーしました' : 'コピー'}
+          </Button>
+          <Button onClick={onClose} size="sm" variant="ghost">
+            閉じる
+          </Button>
+        </>
+      }
+      onClose={onClose}
+      title="Waypoint 詳細"
     >
-      <div className="mx-4 flex max-h-[80vh] w-full max-w-2xl flex-col rounded-xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
-        <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-700">
-          <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-            Waypoint 詳細
-          </h3>
-          <div className="flex gap-2">
-            <button
-              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              onClick={copyToClipboard}
-              type="button"
-            >
-              {copied ? 'コピーしました' : 'コピー'}
-            </button>
-            <button
-              className="rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-              onClick={onClose}
-              type="button"
-            >
-              閉じる
-            </button>
-          </div>
-        </div>
-        <div className="overflow-auto px-6 py-5">
-          <h4 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-100">
-            {waypoint.title}
-          </h4>
-          {waypoint.description && (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-              {waypoint.description}
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
+      <h4 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+        {waypoint.title}
+      </h4>
+      {waypoint.description && (
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+          {waypoint.description}
+        </p>
+      )}
+    </Modal>
   );
 };
 
@@ -138,20 +123,12 @@ const WaypointCard = ({
           value={description}
         />
         <div className="flex gap-2">
-          <button
-            className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
-            onClick={save}
-            type="button"
-          >
+          <Button onClick={save} size="sm" variant="primary">
             保存
-          </button>
-          <button
-            className="rounded bg-zinc-200 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-600"
-            onClick={cancel}
-            type="button"
-          >
+          </Button>
+          <Button onClick={cancel} size="sm" variant="danger">
             キャンセル
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -172,27 +149,24 @@ const WaypointCard = ({
             )}
           </div>
           <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-            <button
-              className="rounded px-2 py-1 text-xs text-blue-500 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950 dark:hover:text-blue-300"
+            <Button
+              className="text-blue-500 hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950 dark:hover:text-blue-300"
               onClick={() => setShowDetail(true)}
-              type="button"
+              size="sm"
+              variant="ghost"
             >
               詳細
-            </button>
-            <button
-              className="rounded px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-              onClick={() => setEditing(true)}
-              type="button"
-            >
+            </Button>
+            <Button onClick={() => setEditing(true)} size="sm" variant="ghost">
               編集
-            </button>
-            <button
-              className="rounded px-2 py-1 text-xs text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950 dark:hover:text-red-300"
+            </Button>
+            <Button
               onClick={() => onDelete(waypoint.id)}
-              type="button"
+              size="sm"
+              variant="dangerGhost"
             >
               削除
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -347,18 +321,17 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
               rows={2}
               value={instruction}
             />
-            <button
-              className="self-start rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            <Button
+              className="self-start"
               disabled={streaming || quest.status === 'decomposing'}
               onClick={decompose}
-              type="button"
             >
               {streaming || quest.status === 'decomposing'
                 ? '細分化中...'
                 : quest.status === 'decomposed'
                   ? '再細分化'
                   : '細分化する'}
-            </button>
+            </Button>
           </div>
         </div>
 
