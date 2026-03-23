@@ -66,6 +66,7 @@ type JobStreamBlockStart = {
   // tool_use の場合: ツール名と ID
   toolName?: string;
   toolUseId?: string;
+  turnIndex: number; // マルチターン時のターン番号（0始まり）
 };
 
 // ブロック差分イベント（既存の delta を置き換え）
@@ -128,11 +129,16 @@ type StreamBlock = {
   toolName?: string; // tool_use の場合
   toolUseId?: string;
   completed: boolean; // block_stop を受信したか
+  turnIndex: number; // 何ターン目のブロックか（0始まり）
 };
 ```
 
 フロントエンドは `StreamBlock[]` を状態として保持し、
 `block_start` で新規追加、`block_delta` で content を追記、`block_stop` で completed をセットする。
+
+`turnIndex` はマルチターン対話（セッション管理機能、[implementation_plan.md](implementation_plan.md) 参照）で
+追加指示ごとにインクリメントされる。シングルターン実行では常に `0`。
+フロントエンドは `turnIndex` の変化をターン境界として検出し、表示を切り替える。
 
 #### 3.2 表示ルール
 
@@ -142,6 +148,19 @@ type StreamBlock = {
 | `tool_use`    | **折りたたみ** | ヘッダー: ツール名 + アイコン / 展開時: 入力JSON    |
 | `tool_result` | **折りたたみ** | ヘッダー: "Result" / 展開時: 実行結果               |
 | `text`        | **展開**       | Markdown レンダリング（最終回答）                   |
+
+#### 3.2.1 ターン別の表示ルール
+
+マルチターン対話時、過去ターンと現在ターンで表示ルールを切り替える:
+
+| 条件                                 | thinking                               | tool_use / tool_result | text   |
+| ------------------------------------ | -------------------------------------- | ---------------------- | ------ |
+| 現在ターン（最新の `turnIndex`）     | ストリーミング中: 展開 / 完了後: 折りたたみ | 折りたたみ             | 展開   |
+| 過去ターン                           | **1行に集約**（"Thinking" ラベルのみ） | 折りたたみ             | 展開   |
+
+- 過去ターンの thinking は vibe-kanban と同様に「Thinking」1行に折りたたみ、展開で内容を確認可能
+- ターン境界にはセパレーターを表示（ユーザーの追加指示テキスト + タイムスタンプ）
+- 過去ターンの text ブロックは展開のままだが、長い場合は最初の数行のみ表示し「もっと見る」で全文表示
 
 #### 3.3 集約ルール
 
@@ -155,14 +174,19 @@ vibe-kanban と同様に、連続する同種ブロックを集約する:
 
 ```
 StreamOutput (コンテナ)
-├── StreamBlock (各ブロックのレンダラー)
-│   ├── ThinkingBlock    — 折りたたみ可能、点滅アニメーション
-│   ├── ToolUseBlock     — アイコン + ツール名 + 折りたたみ
-│   ├── ToolResultBlock  — 折りたたみ、成功/失敗のバッジ
-│   └── TextBlock        — Markdown レンダリング、常時展開
-├── AggregatedToolGroup  — 連続ツール呼び出しのグループ化
-└── StreamStatus         — 実行中インジケーター / 完了バッジ
+├── TurnGroup (ターンごとのグループ化)
+│   ├── TurnBoundary         — ターン境界セパレーター（ユーザー指示テキスト + タイムスタンプ）
+│   ├── StreamBlock (各ブロックのレンダラー)
+│   │   ├── ThinkingBlock    — 折りたたみ可能、過去ターンは1行集約
+│   │   ├── ToolUseBlock     — アイコン + ツール名 + 折りたたみ
+│   │   ├── ToolResultBlock  — 折りたたみ、成功/失敗のバッジ
+│   │   └── TextBlock        — Markdown レンダリング、常時展開
+│   └── AggregatedToolGroup  — 連続ツール呼び出しのグループ化
+└── StreamStatus             — 実行中インジケーター / 完了バッジ
 ```
+
+シングルターン実行（`turnIndex` が `0` のみ）の場合、`TurnGroup` と `TurnBoundary` は描画をスキップし、
+既存の Phase 1-3 と同じ見た目になる。
 
 ---
 
@@ -211,13 +235,32 @@ StreamOutput (コンテナ)
 - [ ] アニメーション（折りたたみの開閉トランジション）
 - [ ] ダークモード対応の確認・調整
 
+### Phase 4: マルチターン対応
+
+**前提:** 対話継続（セッション管理）機能が実装済みであること（[implementation_plan.md](implementation_plan.md) 参照）
+
+**変更ファイル:**
+
+- `packages/shared/src/index.ts` — `JobStreamBlockStart` に `turnIndex` 追加（Phase 1 で定義済みの型を拡張）
+- `apps/job-manager/src/services/claude-runner.ts` — `resumeSession` 時のターンインデックス管理
+- `apps/frontend/src/components/stream/` — ターン別表示コンポーネント
+
+**タスク:**
+
+- [ ] バックエンド: ジョブごとの `currentTurnIndex` カウンターを管理し、`resumeSession` 呼び出し時にインクリメント
+- [ ] バックエンド: `block_start` イベントに `turnIndex` を付与して SSE で送信
+- [ ] フロントエンド: `StreamBlock[]` を `turnIndex` でグルーピングする `useTurnGroups` hook
+- [ ] フロントエンド: `TurnBoundary` コンポーネント（ユーザーの追加指示テキスト、送信時刻を表示）
+- [ ] フロントエンド: `TurnGroup` コンポーネント（過去ターンの thinking を自動集約）
+- [ ] フロントエンド: 過去ターンの thinking ブロックを「Thinking」1行表示に切り替えるロジック
+- [ ] 既存の Phase 1-3 のコンポーネントが `turnIndex` 未指定（= `0`）で後方互換動作することを確認
+
 ---
 
 ## 非対応（スコープ外）
 
 - **仮想スクロール**: vibe-kanban は大量エントリーに対して仮想スクロールを実装しているが、
   Expedition では当面ブロック数が限られるため不要
-- **過去ターンの thinking 集約**: 現状はシングルターン（`-p` による1回実行）のため不要
 - **Diff の +/- 行数集約**: ファイル編集の構造化パースは複雑なため、Phase 3 以降で検討
 
 ---
