@@ -44,7 +44,7 @@ const parseWaypoints = (stdout: string): DecomposeItem[] => {
     if (typeof item !== 'object' || item === null) {
       throw new Error(`Invalid waypoint at index ${i}`);
     }
-    const rec: Record<string, unknown> = Object.assign({}, item);
+    const rec: Record<string, unknown> = { ...item };
     if (typeof rec.title !== 'string') {
       throw new Error(`Invalid waypoint at index ${i}: missing title`);
     }
