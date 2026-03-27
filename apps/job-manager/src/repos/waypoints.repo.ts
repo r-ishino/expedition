@@ -93,12 +93,14 @@ export const insertManyWaypoints = async (
   );
 
   // カテゴリの一括挿入
-  for (let i = 0; i < items.length; i++) {
-    const cats = items[i].categories;
-    if (cats && cats.length > 0) {
-      await insertCategories(waypointIds[i], cats);
-    }
-  }
+  await Promise.all(
+    items.map((item, i) => {
+      const cats = item.categories;
+      return cats && cats.length > 0
+        ? insertCategories(waypointIds[i], cats)
+        : Promise.resolve();
+    })
+  );
 
   return findWaypointsByQuestId(questId);
 };
