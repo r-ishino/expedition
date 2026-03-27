@@ -33,7 +33,6 @@ export const quests = mysqlTable('quests', {
 
 // ------------------------------------------------------------
 // waypoints — quest から細分化されたサブタスク（中間地点）
-// [未確定] カラム構成はタスク管理実装時に決定
 // ------------------------------------------------------------
 export const waypoints = mysqlTable('waypoints', {
   id: varchar('id', { length: 36 }).primaryKey(),
@@ -42,8 +41,25 @@ export const waypoints = mysqlTable('waypoints', {
   description: text('description'),
   status: varchar('status', { length: 20 }).notNull(),
   challengeId: varchar('challenge_id', { length: 36 }),
+  // 見積もり（例: '~50行'）
+  estimate: varchar('estimate', { length: 50 }),
+  // 不確定要素の説明
+  uncertainty: text('uncertainty'),
+  // 表示順（0始まり）
+  sortOrder: int('sort_order').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
+});
+
+// ------------------------------------------------------------
+// waypoint_categories — waypoint のカテゴリタグ（1つの waypoint に複数）
+// ------------------------------------------------------------
+export const waypointCategories = mysqlTable('waypoint_categories', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  waypointId: varchar('waypoint_id', { length: 36 }).notNull(),
+  // カテゴリ名（例: 'schema', 'backend', 'frontend'）
+  name: varchar('name', { length: 50 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
 // ------------------------------------------------------------

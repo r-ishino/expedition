@@ -19,13 +19,26 @@ ${instruction ? `\n## 追加指示\n${instruction}` : ''}
 以下のJSON形式のみを出力してください。JSON以外のテキスト（説明文やマークダウン）は一切含めないでください。
 
 [
-  { "title": "サブタスクのタイトル", "description": "サブタスクの詳細な説明" }
+  {
+    "title": "サブタスクのタイトル",
+    "description": "サブタスクの詳細な説明",
+    "estimate": "変更規模の見積もり（例: '~50行'）",
+    "uncertainty": "不確定要素があれば記述（なければ省略）",
+    "categories": ["変更対象の分類（例: 'schema', 'backend', 'frontend'）"]
+  }
 ]
+
+- categories は複数指定可能です。変更対象に応じて適切な分類を選んでください。
+- estimate は変更行数の目安を記述してください。
+- uncertainty は技術的な不確実性や依存関係による変動要素があれば記述してください。
 `.trim();
 
 type DecomposeItem = {
   title: string;
   description?: string;
+  estimate?: string;
+  uncertainty?: string;
+  categories?: string[];
 };
 
 const parseWaypoints = (stdout: string): DecomposeItem[] => {
@@ -52,6 +65,14 @@ const parseWaypoints = (stdout: string): DecomposeItem[] => {
       title: rec.title,
       description:
         typeof rec.description === 'string' ? rec.description : undefined,
+      estimate: typeof rec.estimate === 'string' ? rec.estimate : undefined,
+      uncertainty:
+        typeof rec.uncertainty === 'string' ? rec.uncertainty : undefined,
+      categories: Array.isArray(rec.categories)
+        ? rec.categories.filter(
+            (c: unknown): c is string => typeof c === 'string'
+          )
+        : undefined,
     };
   });
 };

@@ -92,6 +92,10 @@ export type Waypoint = {
   description: string | null;
   status: WaypointStatus;
   challengeId: string | null;
+  estimate: string | null;
+  uncertainty: string | null;
+  sortOrder: number;
+  categories: string[];
   createdAt: string;
   updatedAt: string;
 };
