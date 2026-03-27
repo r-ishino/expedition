@@ -108,6 +108,7 @@ export const insertManyWaypoints = async (
 export type WaypointUpdateData = {
   title?: string;
   description?: string;
+  status?: WaypointStatus;
   estimate?: string | null;
   uncertainty?: string | null;
   sortOrder?: number;
@@ -128,6 +129,10 @@ export const updateWaypoint = async (
   if (data.description !== undefined) {
     sets.push('description = ?');
     params.push(data.description);
+  }
+  if (data.status !== undefined) {
+    sets.push('status = ?');
+    params.push(data.status);
   }
   if (data.estimate !== undefined) {
     sets.push('estimate = ?');
