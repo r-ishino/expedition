@@ -2,6 +2,12 @@ import { randomUUID } from 'node:crypto';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type { Quest, QuestStatus } from '@expedition/shared';
 import { pool } from '~/db';
+import {
+  findTerritoryIdsByQuestId,
+  findTerritoryIdsByQuestIds,
+  setQuestTerritories,
+  deleteQuestTerritoriesByQuestId,
+} from './quest-territories.repo';
 
 type QuestRow = RowDataPacket & {
   id: string;
@@ -13,12 +19,13 @@ type QuestRow = RowDataPacket & {
   updated_at: Date;
 };
 
-const toQuest = (row: QuestRow): Quest => ({
+const toQuest = (row: QuestRow, territoryIds: string[] = []): Quest => ({
   id: row.id,
   jiraIssueKey: row.jira_issue_key,
   title: row.title,
   description: row.description,
   status: row.status,
+  territoryIds,
   createdAt: row.created_at.toISOString(),
   updatedAt: row.updated_at.toISOString(),
 });
@@ -27,7 +34,9 @@ export const findAllQuests = async (): Promise<Quest[]> => {
   const [rows] = await pool.query<QuestRow[]>(
     'SELECT * FROM quests ORDER BY created_at DESC'
   );
-  return rows.map(toQuest);
+  const ids = rows.map((r) => r.id);
+  const territoriesMap = await findTerritoryIdsByQuestIds(ids);
+  return rows.map((row) => toQuest(row, territoriesMap.get(row.id) ?? []));
 };
 
 export const findQuestById = async (id: string): Promise<Quest | undefined> => {
@@ -36,12 +45,16 @@ export const findQuestById = async (id: string): Promise<Quest | undefined> => {
     [id]
   );
   const row = rows[0];
-  return row ? toQuest(row) : undefined;
+  if (!row) return undefined;
+
+  const territoryIds = await findTerritoryIdsByQuestId(id);
+  return toQuest(row, territoryIds);
 };
 
 export const insertQuest = async (data: {
   title: string;
   description?: string;
+  territoryIds?: string[];
 }): Promise<Quest> => {
   const id = randomUUID();
 
@@ -50,12 +63,17 @@ export const insertQuest = async (data: {
     [id, data.title, data.description ?? null, 'draft']
   );
 
+  if (data.territoryIds && data.territoryIds.length > 0) {
+    await setQuestTerritories(id, data.territoryIds);
+  }
+
   const quest = await findQuestById(id);
   if (!quest) throw new Error('Failed to insert quest');
   return quest;
 };
 
 export const deleteQuest = async (id: string): Promise<boolean> => {
+  await deleteQuestTerritoriesByQuestId(id);
   const [result] = await pool.query<ResultSetHeader>(
     'DELETE FROM quests WHERE id = ?',
     [id]

@@ -32,6 +32,16 @@ export const quests = mysqlTable('quests', {
 });
 
 // ------------------------------------------------------------
+// quest_territories — quest と territory の多対多（修正リポジトリ）
+// ------------------------------------------------------------
+export const questTerritories = mysqlTable('quest_territories', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  questId: varchar('quest_id', { length: 36 }).notNull(),
+  territoryId: varchar('territory_id', { length: 36 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// ------------------------------------------------------------
 // waypoints — quest から細分化されたサブタスク（中間地点）
 // ------------------------------------------------------------
 export const waypoints = mysqlTable('waypoints', {
