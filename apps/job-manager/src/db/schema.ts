@@ -1,4 +1,5 @@
 import {
+  boolean,
   int,
   mysqlTable,
   text,
@@ -27,8 +28,27 @@ export const quests = mysqlTable('quests', {
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
   status: varchar('status', { length: 20 }).notNull(),
+  // UI変更を含むか
+  hasUiChange: boolean('has_ui_change').notNull().default(false),
+  // Schema変更を含むか
+  hasSchemaChange: boolean('has_schema_change').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
+});
+
+// ------------------------------------------------------------
+// quest_attachments — quest の添付資料（補足資料 + UIイメージ）
+// ------------------------------------------------------------
+export const questAttachments = mysqlTable('quest_attachments', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  questId: varchar('quest_id', { length: 36 }).notNull(),
+  // 添付の種類: 'reference'（補足資料）| 'ui_image'（完成UIイメージ）
+  type: varchar('type', { length: 20 }).notNull(),
+  // 表示名（例: 'サンプル取り込みCSV.csv'）
+  name: varchar('name', { length: 255 }).notNull(),
+  // ファイルパスまたはURL
+  path: varchar('path', { length: 500 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
 // ------------------------------------------------------------
@@ -69,6 +89,20 @@ export const waypointCategories = mysqlTable('waypoint_categories', {
   waypointId: varchar('waypoint_id', { length: 36 }).notNull(),
   // カテゴリ名（例: 'schema', 'backend', 'frontend'）
   name: varchar('name', { length: 50 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// ------------------------------------------------------------
+// waypoint_dependencies — waypoint 間の依存関係
+// ------------------------------------------------------------
+export const waypointDependencies = mysqlTable('waypoint_dependencies', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  // 依存元（この waypoint が完了してから…）
+  fromWaypointId: varchar('from_waypoint_id', { length: 36 }).notNull(),
+  // 依存先（…この waypoint を開始できる）
+  toWaypointId: varchar('to_waypoint_id', { length: 36 }).notNull(),
+  // 依存関係のラベル（例: 'rake db:migrate', 'Deploy backend'）
+  label: varchar('label', { length: 100 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
