@@ -72,6 +72,7 @@ export type Quest = {
   title: string;
   description: string | null;
   status: QuestStatus;
+  territoryIds: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -79,6 +80,7 @@ export type Quest = {
 export type QuestRequest = {
   title: string;
   description?: string;
+  territoryIds?: string[];
 };
 
 // Waypoint（中間地点）

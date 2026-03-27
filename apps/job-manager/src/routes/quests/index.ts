@@ -32,6 +32,7 @@ app.post('/', async (c) => {
   const quest = await insertQuest({
     title: body.title.trim(),
     description: body.description?.trim(),
+    territoryIds: body.territoryIds,
   });
   return c.json(quest, 201);
 });
