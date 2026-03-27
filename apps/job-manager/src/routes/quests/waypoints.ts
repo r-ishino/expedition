@@ -26,6 +26,7 @@ app.put('/:questId/waypoints/:waypointId', async (c) => {
   const body = await c.req.json<{
     title?: string;
     description?: string;
+    status?: 'pending' | 'approved' | 'reviewing';
     estimate?: string | null;
     uncertainty?: string | null;
     sortOrder?: number;

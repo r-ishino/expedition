@@ -83,7 +83,7 @@ export type QuestRequest = {
 
 // Waypoint（中間地点）
 
-export type WaypointStatus = 'pending';
+export type WaypointStatus = 'pending' | 'approved' | 'reviewing';
 
 export type Waypoint = {
   id: string;
