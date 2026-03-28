@@ -47,7 +47,7 @@ const MessageBubble = ({ message }: { message: Message }): ReactNode => {
 };
 
 export type WorkspacePaneHandle = {
-  decompose: (text: string) => Promise<void>;
+  runJob: (jobType: string, text: string) => Promise<void>;
 };
 
 export const WorkspacePane = ({
@@ -71,7 +71,7 @@ export const WorkspacePane = ({
     }
   };
 
-  const startDecompose = async (text: string): Promise<void> => {
+  const startJob = async (jobType: string, text: string): Promise<void> => {
     if (!text) return;
 
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
@@ -81,8 +81,8 @@ export const WorkspacePane = ({
 
     try {
       const { jobId } = await apiClient.post<{ jobId: string }>(
-        `/api/quests/${questId}/decompose`,
-        { instruction: text }
+        `/api/quests/${questId}/jobs`,
+        { jobType, instruction: text }
       );
 
       const es = new EventSource(apiClient.streamUrl(jobId));
@@ -140,14 +140,15 @@ export const WorkspacePane = ({
     }
   };
 
-  const decompose = async (): Promise<void> => {
+  const sendInstruction = async (): Promise<void> => {
     const text = instruction.trim();
     if (!text) return;
-    await startDecompose(text);
+    await startJob('freeform', text);
   };
 
   useImperativeHandle(ref, () => ({
-    decompose: (text: string): Promise<void> => startDecompose(text),
+    runJob: (jobType: string, text: string): Promise<void> =>
+      startJob(jobType, text),
   }));
 
   return (
@@ -217,7 +218,7 @@ export const WorkspacePane = ({
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                decompose().catch(() => {});
+                sendInstruction().catch(() => {});
               }
             }}
             placeholder="Claudeに返信..."
@@ -227,7 +228,7 @@ export const WorkspacePane = ({
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-zinc-900 text-base font-semibold text-white hover:bg-zinc-800 disabled:opacity-50"
             disabled={streaming}
             onClick={() => {
-              decompose().catch(() => {});
+              sendInstruction().catch(() => {});
             }}
             type="button"
           >

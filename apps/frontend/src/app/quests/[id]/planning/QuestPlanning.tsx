@@ -22,7 +22,7 @@ export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
   const handleDecompose = async (): Promise<void> => {
     setDecomposing(true);
     try {
-      await workspaceRef.current?.decompose(DECOMPOSE_INSTRUCTION);
+      await workspaceRef.current?.runJob('decompose', DECOMPOSE_INSTRUCTION);
     } catch {
       setDecomposing(false);
     }

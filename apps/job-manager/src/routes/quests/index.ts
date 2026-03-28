@@ -11,7 +11,7 @@ import {
   findWaypointsByQuestId,
   deleteWaypointsByQuestId,
 } from '~/repos/waypoints.repo';
-import { decomposeQuest } from '~/services/decomposer';
+import { executeJob } from '~/services/job-executor';
 import { app as attachmentsApp } from './attachments';
 import { app as waypointsApp } from './waypoints';
 
@@ -83,23 +83,29 @@ app.get('/:id', async (c) => {
   return c.json({ ...quest, waypoints });
 });
 
-// POST /api/quests/:id/decompose — 細分化開始
-app.post('/:id/decompose', async (c) => {
+// POST /api/quests/:id/jobs — ジョブ実行（jobType で処理を切り替え）
+app.post('/:id/jobs', async (c) => {
   const id = c.req.param('id');
   const quest = await findQuestById(id);
   if (!quest) {
     return c.json({ error: 'quest not found' }, 404);
   }
 
-  if (quest.status === 'decomposing') {
+  const body = await c.req
+    .json<{ jobType: string; instruction?: string }>()
+    .catch((): { jobType: string; instruction?: string } => ({
+      jobType: 'freeform',
+    }));
+
+  if (!body.jobType) {
+    return c.json({ error: 'jobType is required' }, 400);
+  }
+
+  if (body.jobType === 'decompose' && quest.status === 'decomposing') {
     return c.json({ error: 'quest is already being decomposed' }, 409);
   }
 
-  const body = await c.req
-    .json<{ instruction?: string }>()
-    .catch((): { instruction?: string } => ({}));
-
-  const { jobId } = await decomposeQuest(quest, body.instruction);
+  const { jobId } = await executeJob(body.jobType, quest, body.instruction);
   return c.json({ jobId }, 202);
 });
 
