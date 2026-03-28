@@ -8,7 +8,7 @@ import type {
   JobStreamDone,
   JobStreamError,
 } from '@expedition/shared';
-import { Button } from '~/components/Buttons/Button/Button';
+import { Button } from '~/components/ui/button';
 import { useTerritories } from '~/hooks/api/useTerritories';
 
 const JOB_MANAGER_URL = 'http://localhost:33333';

@@ -9,8 +9,14 @@ import type {
   JobStreamDone,
   JobStreamError,
 } from '@expedition/shared';
-import { Button } from '~/components/Buttons/Button/Button';
-import { Modal } from '~/components/Popups/Modal/Modal';
+import { Button } from '~/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog';
 import { useQuests } from '~/hooks/api/useQuests';
 
 const JOB_MANAGER_URL = 'http://localhost:33333';
@@ -57,29 +63,36 @@ const WaypointModal = ({
   };
 
   return (
-    <Modal
-      actions={
-        <>
-          <Button onClick={copyToClipboard} size="sm" variant="secondary">
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      open
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Waypoint 詳細</DialogTitle>
+        </DialogHeader>
+        <div>
+          <h4 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+            {waypoint.title}
+          </h4>
+          {waypoint.description && (
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+              {waypoint.description}
+            </p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button onClick={copyToClipboard} size="sm" variant="outline">
             {copied ? 'コピーしました' : 'コピー'}
           </Button>
           <Button onClick={onClose} size="sm" variant="ghost">
             閉じる
           </Button>
-        </>
-      }
-      onClose={onClose}
-      title="Waypoint 詳細"
-    >
-      <h4 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-100">
-        {waypoint.title}
-      </h4>
-      {waypoint.description && (
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-          {waypoint.description}
-        </p>
-      )}
-    </Modal>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -123,10 +136,10 @@ const WaypointCard = ({
           value={description}
         />
         <div className="flex gap-2">
-          <Button onClick={save} size="sm" variant="primary">
+          <Button onClick={save} size="sm">
             保存
           </Button>
-          <Button onClick={cancel} size="sm" variant="danger">
+          <Button onClick={cancel} size="sm" variant="secondary">
             キャンセル
           </Button>
         </div>
@@ -163,7 +176,7 @@ const WaypointCard = ({
             <Button
               onClick={() => onDelete(waypoint.id)}
               size="sm"
-              variant="dangerGhost"
+              variant="destructiveGhost"
             >
               削除
             </Button>

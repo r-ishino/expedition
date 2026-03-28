@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { Quest, QuestStatus } from '@expedition/shared';
-import { Button } from '~/components/Buttons/Button/Button';
+import { Button } from '~/components/ui/button';
 import { useQuests } from '~/hooks/api/useQuests';
 
 const JOB_MANAGER_URL = 'http://localhost:33333';
@@ -61,7 +61,7 @@ const QuestCard = ({
         onDelete(quest.id);
       }}
       size="sm"
-      variant="dangerGhost"
+      variant="destructiveGhost"
     >
       削除
     </Button>

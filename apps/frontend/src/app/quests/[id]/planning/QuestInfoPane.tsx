@@ -5,8 +5,14 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import type { Quest, Waypoint } from '@expedition/shared';
 import { useTerritories } from '~/hooks/api/useTerritories';
-import { Modal } from '~/components/Popups/Modal/Modal';
-import { Button } from '~/components/Buttons/Button/Button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog';
+import { Button } from '~/components/ui/button';
 
 type QuestWithWaypoints = Quest & { waypoints: Waypoint[] };
 
@@ -213,68 +219,75 @@ const TerritorySelector = ({
   );
 
   return (
-    <Modal
-      actions={
-        <Button
-          onClick={() => {
-            onSelect(selected);
-            onClose();
-          }}
-          size="sm"
-        >
-          追加
-        </Button>
-      }
-      onClose={onClose}
-      title="リポジトリを追加"
+    <Dialog
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      open
     >
-      {available.length === 0 ? (
-        <p className="text-sm text-zinc-500">
-          追加可能なリポジトリがありません
-        </p>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {available.map((t) => (
-            <button
-              className="flex cursor-pointer items-center gap-3 rounded-lg p-2 text-left hover:bg-zinc-50"
-              key={t.id}
-              onClick={() => toggle(t.id)}
-              type="button"
-            >
-              <span
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                  selected.includes(t.id)
-                    ? 'border-blue-600 bg-blue-600 text-white'
-                    : 'border-zinc-300'
-                }`}
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>リポジトリを追加</DialogTitle>
+        </DialogHeader>
+        {available.length === 0 ? (
+          <p className="text-sm text-zinc-500">
+            追加可能なリポジトリがありません
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {available.map((t) => (
+              <button
+                className="flex cursor-pointer items-center gap-3 rounded-lg p-2 text-left hover:bg-zinc-50"
+                key={t.id}
+                onClick={() => toggle(t.id)}
+                type="button"
               >
-                {selected.includes(t.id) && (
-                  <svg
-                    className="h-3 w-3"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={3}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M5 13l4 4L19 7"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                )}
-              </span>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-zinc-800">
-                  {t.name}
+                <span
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                    selected.includes(t.id)
+                      ? 'border-blue-600 bg-blue-600 text-white'
+                      : 'border-zinc-300'
+                  }`}
+                >
+                  {selected.includes(t.id) && (
+                    <svg
+                      className="h-3 w-3"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={3}
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M5 13l4 4L19 7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
                 </span>
-                <span className="text-xs text-zinc-500">{t.path}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </Modal>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-zinc-800">
+                    {t.name}
+                  </span>
+                  <span className="text-xs text-zinc-500">{t.path}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+        <DialogFooter>
+          <Button
+            onClick={() => {
+              onSelect(selected);
+              onClose();
+            }}
+            size="sm"
+          >
+            追加
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
