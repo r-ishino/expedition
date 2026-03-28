@@ -27,8 +27,8 @@ export const executeJob = async (
 
   const prompt = handler.buildPrompt(context);
   const cwd = repos[0]?.path;
-  const maxTurns = jobType === 'decompose' ? 10 : undefined;
-  const job = await runClaude({ prompt, cwd, maxTurns });
+  const maxBudgetUsd = jobType === 'decompose' ? 0.5 : undefined;
+  const job = await runClaude({ prompt, cwd, maxBudgetUsd });
 
   const emitter = getJobEmitter(job.id);
   if (emitter) {
