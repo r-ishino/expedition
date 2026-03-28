@@ -21,7 +21,7 @@ type RunClaudeOptions = {
   prompt: string;
   repoPath?: string;
   cwd?: string;
-  maxTurns?: number;
+  maxBudgetUsd?: number;
 };
 
 const jobOptionsMap = new Map<string, RunClaudeOptions>();
@@ -208,7 +208,7 @@ const startJob = async (job: JobResponse): Promise<void> => {
   const emitter = jobEmitters.get(id) ?? new EventEmitter();
   jobEmitters.set(id, emitter);
 
-  const maxTurns = jobOptionsMap.get(id)?.maxTurns;
+  const maxBudgetUsd = jobOptionsMap.get(id)?.maxBudgetUsd;
 
   const proc = spawn(
     'claude',
@@ -219,7 +219,7 @@ const startJob = async (job: JobResponse): Promise<void> => {
       'stream-json',
       '--verbose',
       '--include-partial-messages',
-      ...(maxTurns ? ['--max-turns', String(maxTurns)] : []),
+      ...(maxBudgetUsd ? ['--max-budget-usd', String(maxBudgetUsd)] : []),
     ],
     {
       stdio: ['ignore', 'pipe', 'pipe'],
