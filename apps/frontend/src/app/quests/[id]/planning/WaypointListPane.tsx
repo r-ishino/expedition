@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import type { Waypoint, WaypointStatus } from '@expedition/shared';
+import { Button } from '~/components/ui/button';
 
 const statusLabel: Record<WaypointStatus, string> = {
   pending: '検討中',
@@ -125,9 +126,13 @@ const WaypointCard = ({
 
 export const WaypointListPane = ({
   waypoints,
+  onRequestDecompose,
+  decomposing,
 }: {
   questId: string;
   waypoints: Waypoint[];
+  onRequestDecompose: () => Promise<void>;
+  decomposing: boolean;
 }): ReactNode => {
   const pendingCount = waypoints.filter((w) => w.status === 'pending').length;
 
@@ -157,10 +162,34 @@ export const WaypointListPane = ({
             ))}
           </div>
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <span className="text-sm text-zinc-400">
-              細分化するとここに中継地点が表示されます
-            </span>
+          <div className="flex h-full flex-col items-center justify-center gap-4 px-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100">
+              <span className="text-xl text-zinc-400">📋</span>
+            </div>
+            <div className="flex flex-col items-center gap-1.5">
+              <span className="text-sm font-medium text-zinc-600">
+                まだ中継地点がありません
+              </span>
+              <span className="text-center text-xs leading-relaxed text-zinc-400">
+                Questの内容をもとにAIが中継地点のたたき台を作成します
+              </span>
+            </div>
+            <Button
+              className="bg-zinc-900 text-white hover:bg-zinc-800"
+              disabled={decomposing}
+              onClick={() => {
+                onRequestDecompose().catch(() => {});
+              }}
+            >
+              {decomposing ? (
+                <>
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                  作成中...
+                </>
+              ) : (
+                'たたき台を作成'
+              )}
+            </Button>
           </div>
         )}
       </div>

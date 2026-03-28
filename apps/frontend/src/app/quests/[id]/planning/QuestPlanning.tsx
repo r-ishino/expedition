@@ -1,13 +1,43 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
+import type { Quest, Waypoint } from '@expedition/shared';
+import { PollingTrigger } from '~/components/PollingTrigger';
 import { useQuests } from '~/hooks/api/useQuests';
+import { apiClient } from '~/lib/apiClient';
 import { QuestInfoPane } from './QuestInfoPane';
 import { WaypointListPane } from './WaypointListPane';
-import { WorkspacePane } from './WorkspacePane';
+import { WorkspacePane, type WorkspacePaneHandle } from './WorkspacePane';
+
+type QuestWithWaypoints = Quest & { waypoints: Waypoint[] };
+
+const DECOMPOSE_INSTRUCTION =
+  'このQuestの内容をもとに、中継地点のたたき台を作成してください';
 
 export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
   const { data: quest, mutate } = useQuests().useShow(questId);
+  const [decomposing, setDecomposing] = useState(false);
+  const workspaceRef = useRef<WorkspacePaneHandle>(null);
+
+  const handleDecompose = async (): Promise<void> => {
+    setDecomposing(true);
+    try {
+      await workspaceRef.current?.decompose(DECOMPOSE_INSTRUCTION);
+    } catch {
+      setDecomposing(false);
+    }
+  };
+
+  const fetchQuest = (): Promise<QuestWithWaypoints> =>
+    apiClient.fetch<QuestWithWaypoints>(`/api/quests/${questId}`);
+
+  const shouldStop = (data: QuestWithWaypoints): boolean =>
+    data.waypoints.length > 0;
+
+  const handlePollingComplete = (data: QuestWithWaypoints): void => {
+    mutate(data, false).catch(() => {});
+    setDecomposing(false);
+  };
 
   if (!quest) {
     return (
@@ -19,6 +49,13 @@ export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
 
   return (
     <div className="flex h-screen flex-col font-sans">
+      <PollingTrigger<QuestWithWaypoints>
+        enabled={decomposing}
+        fetcher={fetchQuest}
+        onComplete={handlePollingComplete}
+        shouldStop={shouldStop}
+      />
+
       {/* Page title bar */}
       <div className="flex h-12 shrink-0 items-center gap-3 border-b border-zinc-200 px-5">
         <span className="text-sm">⚡</span>
@@ -36,12 +73,17 @@ export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
 
         {/* Middle pane: Waypoint list */}
         <div className="min-w-0 flex-1 overflow-y-auto border-r border-zinc-200 bg-white">
-          <WaypointListPane questId={questId} waypoints={quest.waypoints} />
+          <WaypointListPane
+            decomposing={decomposing}
+            onRequestDecompose={handleDecompose}
+            questId={questId}
+            waypoints={quest.waypoints}
+          />
         </div>
 
         {/* Right pane: Workspace */}
         <div className="flex w-[580px] shrink-0 flex-col bg-white">
-          <WorkspacePane questId={questId} />
+          <WorkspacePane questId={questId} ref={workspaceRef} />
         </div>
       </div>
     </div>
