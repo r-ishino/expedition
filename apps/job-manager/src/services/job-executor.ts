@@ -1,7 +1,9 @@
 import type { Quest } from '@expedition/shared';
 import { runClaude, getJob, getJobEmitter } from './claude-runner';
 import { updateQuestStatus } from '~/repos/quests.repo';
+import { findTerritoryById } from '~/repos/territories.repo';
 import { getHandler } from './job-handlers';
+import type { RepoInfo } from './job-handlers/types';
 
 export const executeJob = async (
   jobType: string,
@@ -9,14 +11,24 @@ export const executeJob = async (
   instruction?: string
 ): Promise<{ jobId: string }> => {
   const handler = getHandler(jobType);
-  const context = { quest, instruction };
+
+  // 全 territory のパスを解決（コード調査用）
+  const repos: RepoInfo[] = (
+    await Promise.all(quest.territoryIds.map((id) => findTerritoryById(id)))
+  )
+    .filter((t): t is NonNullable<typeof t> => t !== undefined)
+    .map((t) => ({ name: t.name, path: t.path }));
+
+  const context = { quest, instruction, repos };
 
   if (jobType === 'decompose') {
     await updateQuestStatus(quest.id, 'decomposing');
   }
 
   const prompt = handler.buildPrompt(context);
-  const job = await runClaude({ prompt });
+  const cwd = repos[0]?.path;
+  const maxTurns = jobType === 'decompose' ? 10 : undefined;
+  const job = await runClaude({ prompt, cwd, maxTurns });
 
   const emitter = getJobEmitter(job.id);
   if (emitter) {

@@ -5,22 +5,50 @@ import {
 import { updateQuestStatus } from '~/repos/quests.repo';
 import type { JobHandler, JobContext } from './types';
 
-const buildPrompt = (context: JobContext): string =>
-  `
-以下の課題を、1タスク = 1 PR（100行以下の変更）の粒度でサブタスクに細分化してください。
+const buildRepoSection = (context: JobContext): string => {
+  if (context.repos.length === 0) return '';
 
+  const repoList = context.repos
+    .map((r) => `- ${r.name}: ${r.path}`)
+    .join('\n');
+
+  return `
+## 対象リポジトリ
+${repoList}
+`;
+};
+
+const buildPrompt = (context: JobContext): string => {
+  const hasRepos = context.repos.length > 0;
+
+  const explorationStep = hasRepos
+    ? `
+## 手順
+1. まず、対象リポジトリのコードベースを調査してください。
+   - ディレクトリ構造の把握（Glob）と主要ファイルの確認（Read）に留めてください。
+   - ファイルの中身を深く読み込む必要はありません。構造と命名から推測してください。
+   - 調査は最小限にとどめ、素早くサブタスク分解に進んでください。
+2. 調査結果に基づき、具体的で実行可能なサブタスクに分解してください。
+   - 各サブタスクで変更が必要なファイルやモジュールを特定してください。
+   - 既存のコードパターンやアーキテクチャに整合するタスク分割にしてください。
+`
+    : '';
+
+  return `
+以下の課題を、1タスク = 1 PR（100行以下の変更）の粒度でサブタスクに細分化してください。
+${buildRepoSection(context)}${explorationStep}
 ## 課題
 タイトル: ${context.quest.title}
 ${context.quest.description ? `説明: ${context.quest.description}` : ''}
 ${context.instruction ? `\n## 追加指示\n${context.instruction}` : ''}
 
 ## 出力形式
-以下のJSON形式のみを出力してください。JSON以外のテキスト（説明文やマークダウン）は一切含めないでください。
+最終的に以下のJSON配列を出力してください。${hasRepos ? 'コードベース調査のためにツールを使用した後、最後のメッセージでJSON配列を出力してください。' : 'JSON以外のテキスト（説明文やマークダウン）は一切含めないでください。'}
 
 [
   {
     "title": "サブタスクのタイトル",
-    "description": "サブタスクの詳細な説明",
+    "description": "サブタスクの詳細な説明${hasRepos ? '（変更対象のファイルパスを含めてください）' : ''}",
     "estimate": "変更規模の見積もり（例: '~50行'）",
     "uncertainty": "不確定要素があれば記述（なければ省略）",
     "categories": ["変更対象の分類（例: 'schema', 'backend', 'frontend'）"]
@@ -31,6 +59,7 @@ ${context.instruction ? `\n## 追加指示\n${context.instruction}` : ''}
 - estimate は変更行数の目安を記述してください。
 - uncertainty は技術的な不確実性や依存関係による変動要素があれば記述してください。
 `.trim();
+};
 
 type DecomposeItem = {
   title: string;
