@@ -18,8 +18,7 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog';
 import { useQuests } from '~/hooks/api/useQuests';
-
-const JOB_MANAGER_URL = 'http://localhost:33333';
+import { apiClient } from '~/lib/apiClient';
 
 const statusLabel: Record<QuestStatus, string> = {
   draft: '下書き',
@@ -34,10 +33,6 @@ const statusStyle: Record<QuestStatus, string> = {
   decomposed:
     'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
 };
-
-const parseJson = <T,>(text: string): T =>
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-  JSON.parse(text);
 
 const WaypointModal = ({
   waypoint,
@@ -205,36 +200,21 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
     setStreaming(true);
 
     try {
-      const res = await fetch(
-        `${JOB_MANAGER_URL}/api/quests/${questId}/decompose`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            instruction: instruction.trim() || undefined,
-          }),
-        }
+      const { jobId } = await apiClient.post<{ jobId: string }>(
+        `/api/quests/${questId}/decompose`,
+        { instruction: instruction.trim() || undefined }
       );
 
-      const text = await res.text();
-
-      if (!res.ok) {
-        const body = parseJson<{ error?: string }>(text);
-        throw new Error(body.error ?? `HTTP ${res.status}`);
-      }
-
-      const { jobId } = parseJson<{ jobId: string }>(text);
-
-      const es = new EventSource(`${JOB_MANAGER_URL}/api/jobs/${jobId}/stream`);
+      const es = new EventSource(apiClient.streamUrl(jobId));
       eventSourceRef.current = es;
 
       es.addEventListener('delta', (e: MessageEvent<string>) => {
-        const data = parseJson<JobStreamDelta>(e.data);
+        const data = apiClient.parseJson<JobStreamDelta>(e.data);
         setStreamOutput((prev) => prev + data.text);
       });
 
       es.addEventListener('done', (_e: MessageEvent<string>) => {
-        parseJson<JobStreamDone>(_e.data);
+        apiClient.parseJson<JobStreamDone>(_e.data);
         setStreaming(false);
         es.close();
         eventSourceRef.current = null;
@@ -247,7 +227,7 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
 
       es.addEventListener('error', (e: MessageEvent<string>) => {
         if (e.data) {
-          const data = parseJson<JobStreamError>(e.data);
+          const data = apiClient.parseJson<JobStreamError>(e.data);
           setStreamOutput((prev) => prev + `\nError: ${data.message}`);
         }
         setStreaming(false);
@@ -270,19 +250,15 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
     waypointId: string,
     data: { title: string; description: string }
   ): void => {
-    fetch(`${JOB_MANAGER_URL}/api/quests/${questId}/waypoints/${waypointId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
+    apiClient
+      .put(`/api/quests/${questId}/waypoints/${waypointId}`, data)
       .then(() => mutate())
       .catch(() => {});
   };
 
   const handleDeleteWaypoint = (waypointId: string): void => {
-    fetch(`${JOB_MANAGER_URL}/api/quests/${questId}/waypoints/${waypointId}`, {
-      method: 'DELETE',
-    })
+    apiClient
+      .delete(`/api/quests/${questId}/waypoints/${waypointId}`)
       .then(() => mutate())
       .catch(() => {});
   };

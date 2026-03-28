@@ -1,7 +1,6 @@
 import useSWR from 'swr';
 import type { SWRConfiguration, SWRResponse } from 'swr';
-
-const JOB_MANAGER_URL = 'http://localhost:33333';
+import { apiClient } from '~/lib/apiClient';
 
 const fetcher = async <T>(url: string): Promise<T> => {
   const res = await fetch(url);
@@ -23,7 +22,7 @@ export const useFetcher = <T>(
   path: string | null,
   options?: SWRConfiguration<T, Error>
 ): FetcherReturnType<T> => {
-  const url = path !== null ? `${JOB_MANAGER_URL}${path}` : null;
+  const url = path !== null ? apiClient.url(path) : null;
   const { data, error, isLoading, mutate } = useSWR<T, Error>(
     url,
     fetcher,

@@ -10,25 +10,7 @@ import type {
 } from '@expedition/shared';
 import { Button } from '~/components/ui/button';
 import { useTerritories } from '~/hooks/api/useTerritories';
-
-const JOB_MANAGER_URL = 'http://localhost:33333';
-
-const parseJson = <T,>(text: string): T =>
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-  JSON.parse(text);
-
-const fetchJson = async <T,>(
-  input: RequestInfo,
-  init?: RequestInit
-): Promise<T> => {
-  const res = await fetch(input, init);
-  const text = await res.text();
-  if (!res.ok) {
-    const body = parseJson<{ error?: string }>(text);
-    throw new Error(body.error ?? `HTTP ${res.status}`);
-  }
-  return parseJson<T>(text);
-};
+import { apiClient } from '~/lib/apiClient';
 
 type JobEntry = {
   job: JobResponse;
@@ -131,11 +113,11 @@ export const JobForm = (): ReactNode => {
   };
 
   const startStream = (jobId: string): void => {
-    const es = new EventSource(`${JOB_MANAGER_URL}/api/jobs/${jobId}/stream`);
+    const es = new EventSource(apiClient.streamUrl(jobId));
     eventSourcesRef.current.set(jobId, es);
 
     es.addEventListener('delta', (e: MessageEvent<string>) => {
-      const data = parseJson<JobStreamDelta>(e.data);
+      const data = apiClient.parseJson<JobStreamDelta>(e.data);
       updateEntry(jobId, (prev) => ({
         ...prev,
         streamedOutput: prev.streamedOutput + data.text,
@@ -147,7 +129,7 @@ export const JobForm = (): ReactNode => {
     });
 
     es.addEventListener('done', (e: MessageEvent<string>) => {
-      const data = parseJson<JobStreamDone>(e.data);
+      const data = apiClient.parseJson<JobStreamDone>(e.data);
       updateEntry(jobId, (prev) => ({
         ...prev,
         streaming: false,
@@ -164,7 +146,7 @@ export const JobForm = (): ReactNode => {
 
     es.addEventListener('error', (e: MessageEvent<string>) => {
       if (e.data) {
-        const data = parseJson<JobStreamError>(e.data);
+        const data = apiClient.parseJson<JobStreamError>(e.data);
         setError(data.message);
       }
       updateEntry(jobId, (prev) => ({
@@ -192,13 +174,9 @@ export const JobForm = (): ReactNode => {
     setError(null);
 
     try {
-      const job = await fetchJson<JobResponse>(`${JOB_MANAGER_URL}/api/jobs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: prompt,
-          territoryId: territoryId || undefined,
-        }),
+      const job = await apiClient.post<JobResponse>('/api/jobs', {
+        prompt: prompt,
+        territoryId: territoryId || undefined,
       });
 
       const newEntry: JobEntry = {
