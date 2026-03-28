@@ -14,9 +14,7 @@ export const useQuests = (): ReturnType => {
     useFetcher<Quest[]>('/api/quests');
 
   const useShow = (id: string): FetcherReturnType<QuestWithWaypoints> =>
-    useFetcher<QuestWithWaypoints>(`/api/quests/${id}`, {
-      refreshInterval: 3000,
-    });
+    useFetcher<QuestWithWaypoints>(`/api/quests/${id}`);
 
   return { useIndex, useShow };
 };

@@ -1,6 +1,12 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import {
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import type {
   JobStreamDelta,
   JobStreamDone,
@@ -40,7 +46,17 @@ const MessageBubble = ({ message }: { message: Message }): ReactNode => {
   );
 };
 
-export const WorkspacePane = ({ questId }: { questId: string }): ReactNode => {
+export type WorkspacePaneHandle = {
+  decompose: (text: string) => Promise<void>;
+};
+
+export const WorkspacePane = ({
+  questId,
+  ref,
+}: {
+  questId: string;
+  ref?: Ref<WorkspacePaneHandle>;
+}): ReactNode => {
   const { mutate } = useQuests().useShow(questId);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentStream, setCurrentStream] = useState('');
@@ -55,8 +71,7 @@ export const WorkspacePane = ({ questId }: { questId: string }): ReactNode => {
     }
   };
 
-  const decompose = async (): Promise<void> => {
-    const text = instruction.trim();
+  const startDecompose = async (text: string): Promise<void> => {
     if (!text) return;
 
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
@@ -124,6 +139,16 @@ export const WorkspacePane = ({ questId }: { questId: string }): ReactNode => {
       setStreaming(false);
     }
   };
+
+  const decompose = async (): Promise<void> => {
+    const text = instruction.trim();
+    if (!text) return;
+    await startDecompose(text);
+  };
+
+  useImperativeHandle(ref, () => ({
+    decompose: (text: string): Promise<void> => startDecompose(text),
+  }));
 
   return (
     <div className="flex h-full flex-col">

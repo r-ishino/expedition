@@ -257,6 +257,45 @@ StreamOutput (コンテナ)
 
 ---
 
+## 既知の課題
+
+### POST → EventSource の接続タイミング問題
+
+現在の実装では、フロントエンドが `POST /api/quests/:id/decompose` のレスポンスを受け取ってから
+`EventSource` で SSE 接続を開始する。しかしバックエンドは POST 処理中に `startJob()` で
+Claude Code プロセスを spawn しており、**POST レスポンスが返る前にストリーミングが開始**される。
+
+```
+POST 送信 → バックエンド: runClaude() → spawn → delta 発火開始
+                                                    ↑ この間のイベントが失われる
+POST レスポンス ← { jobId } ←─────────────────────────┘
+EventSource 接続 → 以降の delta のみ受信
+```
+
+`jobs.stream.ts` で接続時に蓄積済みの `job.stdout` をまとめて送信する処理があるため
+最終結果は取れるが、**リアルタイムのストリーミング体験が損なわれる**。
+
+**対処案:**
+
+1. **jobId を先に生成して返す** — `runClaude` を呼ぶ前に jobId をレスポンスし、バックグラウンドで起動する。フロントエンドは即座に SSE 接続できる
+2. **WebSocket 化** — vibe-kanban のように WebSocket で双方向通信にすれば、接続確立後にジョブ開始を指示できる
+
+### vibe-kanban との設計差異（参考）
+
+今回の調査で判明した vibe-kanban のアーキテクチャとの違い:
+
+|                      | vibe-kanban                                              | expedition (現在)                       |
+| -------------------- | -------------------------------------------------------- | --------------------------------------- |
+| Claude Code との通信 | ACP (Agent Client Protocol) 経由。14種の高レベルイベント | stream-json を直接パース                |
+| フロントへの配信     | WebSocket + JSON Patch (差分更新)                        | SSE (Server-Sent Events)                |
+| イベント分類         | AcpEvent → NormalizedEntry → 24種の ConversationRow      | JobStreamEvent (delta/done/error の3種) |
+| パフォーマンス       | requestAnimationFrame バッチ + TanStack Virtual          | 特になし                                |
+
+expedition は stream-json を直接パースする方針で十分（ACP は非公開プロトコルのため）。
+配信方式も SSE で当面は問題ないが、双方向通信が必要になった場合は WebSocket 化を検討する。
+
+---
+
 ## 非対応（スコープ外）
 
 - **仮想スクロール**: vibe-kanban は大量エントリーに対して仮想スクロールを実装しているが、
