@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
-import type { Waypoint, WaypointStatus } from '@expedition/shared';
+import type {
+  Waypoint,
+  WaypointDependency,
+  WaypointStatus,
+} from '@expedition/shared';
 import { pool } from '~/db';
 import {
   deleteCategoriesByWaypointId,
@@ -8,6 +12,10 @@ import {
   findCategoriesByWaypointIds,
   insertCategories,
 } from './waypoint-categories.repo';
+import {
+  deleteDependenciesByWaypointIds,
+  findDependenciesByWaypointIds,
+} from './waypoint-dependencies.repo';
 
 type WaypointRow = RowDataPacket & {
   id: string;
@@ -23,7 +31,13 @@ type WaypointRow = RowDataPacket & {
   updated_at: Date;
 };
 
-const toWaypoint = (row: WaypointRow, categories: string[] = []): Waypoint => ({
+const toWaypoint = (
+  row: WaypointRow,
+  extra: {
+    categories?: string[];
+    dependencies?: WaypointDependency[];
+  } = {}
+): Waypoint => ({
   id: row.id,
   questId: row.quest_id,
   title: row.title,
@@ -33,15 +47,24 @@ const toWaypoint = (row: WaypointRow, categories: string[] = []): Waypoint => ({
   estimate: row.estimate,
   uncertainty: row.uncertainty,
   sortOrder: row.sort_order,
-  categories,
+  categories: extra.categories ?? [],
+  dependencies: extra.dependencies ?? [],
   createdAt: row.created_at.toISOString(),
   updatedAt: row.updated_at.toISOString(),
 });
 
-const attachCategories = async (rows: WaypointRow[]): Promise<Waypoint[]> => {
+const attachRelations = async (rows: WaypointRow[]): Promise<Waypoint[]> => {
   const ids = rows.map((r) => r.id);
-  const categoriesMap = await findCategoriesByWaypointIds(ids);
-  return rows.map((row) => toWaypoint(row, categoriesMap.get(row.id) ?? []));
+  const [categoriesMap, dependenciesMap] = await Promise.all([
+    findCategoriesByWaypointIds(ids),
+    findDependenciesByWaypointIds(ids),
+  ]);
+  return rows.map((row) =>
+    toWaypoint(row, {
+      categories: categoriesMap.get(row.id) ?? [],
+      dependencies: dependenciesMap.get(row.id) ?? [],
+    })
+  );
 };
 
 export const findWaypointsByQuestId = async (
@@ -51,7 +74,7 @@ export const findWaypointsByQuestId = async (
     'SELECT * FROM waypoints WHERE quest_id = ? ORDER BY sort_order, created_at',
     [questId]
   );
-  return attachCategories(rows);
+  return attachRelations(rows);
 };
 
 export type WaypointInsertItem = {
@@ -176,12 +199,21 @@ export const updateWaypoint = async (
   const row = rows[0];
   if (!row) return undefined;
 
-  const categoriesMap = await findCategoriesByWaypointIds([id]);
-  return toWaypoint(row, categoriesMap.get(id) ?? []);
+  const [categoriesMap, dependenciesMap] = await Promise.all([
+    findCategoriesByWaypointIds([id]),
+    findDependenciesByWaypointIds([id]),
+  ]);
+  return toWaypoint(row, {
+    categories: categoriesMap.get(id) ?? [],
+    dependencies: dependenciesMap.get(id) ?? [],
+  });
 };
 
 export const deleteWaypoint = async (id: string): Promise<boolean> => {
-  await deleteCategoriesByWaypointId(id);
+  await Promise.all([
+    deleteCategoriesByWaypointId(id),
+    deleteDependenciesByWaypointIds([id]),
+  ]);
   const [result] = await pool.query<ResultSetHeader>(
     'DELETE FROM waypoints WHERE id = ?',
     [id]
@@ -192,12 +224,15 @@ export const deleteWaypoint = async (id: string): Promise<boolean> => {
 export const deleteWaypointsByQuestId = async (
   questId: string
 ): Promise<void> => {
-  // 先にカテゴリを削除
+  // 先にカテゴリと依存関係を削除
   const [rows] = await pool.query<WaypointRow[]>(
     'SELECT id FROM waypoints WHERE quest_id = ?',
     [questId]
   );
   const ids = rows.map((r) => r.id);
-  await deleteCategoriesByWaypointIds(ids);
+  await Promise.all([
+    deleteCategoriesByWaypointIds(ids),
+    deleteDependenciesByWaypointIds(ids),
+  ]);
   await pool.query('DELETE FROM waypoints WHERE quest_id = ?', [questId]);
 };

@@ -12,6 +12,7 @@ import {
   deleteWaypointsByQuestId,
 } from '~/repos/waypoints.repo';
 import { decomposeQuest } from '~/services/decomposer';
+import { app as attachmentsApp } from './attachments';
 import { app as waypointsApp } from './waypoints';
 
 const app = new Hono();
@@ -34,6 +35,8 @@ app.post('/', async (c) => {
     title: body.title.trim(),
     description: body.description?.trim(),
     territoryIds: body.territoryIds,
+    hasUiChange: body.hasUiChange,
+    hasSchemaChange: body.hasSchemaChange,
   });
   return c.json(quest, 201);
 });
@@ -100,7 +103,8 @@ app.post('/:id/decompose', async (c) => {
   return c.json({ jobId }, 202);
 });
 
-// waypoint サブルート
+// サブルート
+app.route('/', attachmentsApp);
 app.route('/', waypointsApp);
 
 export { app };
