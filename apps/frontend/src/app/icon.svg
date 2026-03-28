@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Deep dark background -->
+  <rect width="32" height="32" rx="6" fill="#0A0A0F"/>
+  <!-- Subtle vignette glow -->
+  <radialGradient id="glow" cx="50%" cy="45%" r="50%">
+    <stop offset="0%" stop-color="#2A1F0E" stop-opacity="0.4"/>
+    <stop offset="100%" stop-color="#0A0A0F" stop-opacity="0"/>
+  </radialGradient>
+  <rect width="32" height="32" rx="6" fill="url(#glow)"/>
+  <!-- Ornate flag pole with Art Nouveau styling -->
+  <rect x="7" y="5" width="1.8" height="23" rx="0.9" fill="#8B7340"/>
+  <rect x="7.3" y="5" width="1.2" height="23" rx="0.6" fill="#C9A84E" opacity="0.5"/>
+  <!-- Pole finial - ornament -->
+  <ellipse cx="7.9" cy="4" rx="1.8" ry="1.8" fill="#0A0A0F" stroke="#C9A84E" stroke-width="0.6"/>
+  <path d="M7.9 2.5 L8.5 3.8 L7.9 3.4 L7.3 3.8 Z" fill="#E2C56B"/>
+  <circle cx="7.9" cy="4.3" r="0.5" fill="#E2C56B"/>
+  <!-- Flag - elegant flowing banner -->
+  <linearGradient id="flag" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#D4AD45"/>
+    <stop offset="50%" stop-color="#C49A30"/>
+    <stop offset="100%" stop-color="#A07B20"/>
+  </linearGradient>
+  <path d="M8.8 5.5 L27 7 C28 7.2 27.5 8.5 26.5 8.8 L23 9.5 L27 10.8 C28 11.1 27.5 12.5 26.5 12.8 L8.8 17.5 Z" fill="url(#flag)"/>
+  <!-- Flag inner shadow for depth -->
+  <path d="M8.8 5.5 L27 7 C28 7.2 27.5 8.5 26.5 8.8 L23 9.5 L27 10.8 C28 11.1 27.5 12.5 26.5 12.8 L8.8 17.5 Z" fill="#0A0A0F" opacity="0.15"/>
+  <!-- Ornamental border on flag -->
+  <path d="M8.8 5.5 L27 7 C28 7.2 27.5 8.5 26.5 8.8 L23 9.5 L27 10.8 C28 11.1 27.5 12.5 26.5 12.8 L8.8 17.5" fill="none" stroke="#E8D48B" stroke-width="0.4" opacity="0.6"/>
+  <!-- Art Nouveau decorative lines on flag -->
+  <path d="M10 8 C14 8.5 18 9.5 24 9.5" fill="none" stroke="#0A0A0F" stroke-width="0.3" opacity="0.3"/>
+  <path d="M10 13 C14 12.5 18 12 23 11.5" fill="none" stroke="#0A0A0F" stroke-width="0.3" opacity="0.3"/>
+  <!-- Central emblem - stylized compass rose -->
+  <g transform="translate(17.5, 10.8)">
+    <circle cx="0" cy="0" r="2.8" fill="none" stroke="#0A0A0F" stroke-width="0.4" opacity="0.4"/>
+    <polygon points="0,-3 0.8,-0.8 3,0 0.8,0.8 0,3 -0.8,0.8 -3,0 -0.8,-0.8" fill="#0A0A0F" opacity="0.5"/>
+    <polygon points="0,-2.2 0.6,-0.6 2.2,0 0.6,0.6 0,2.2 -0.6,0.6 -2.2,0 -0.6,-0.6" fill="#EDD98B" opacity="0.7"/>
+    <circle cx="0" cy="0" r="0.5" fill="#0A0A0F" opacity="0.6"/>
+  </g>
+  <!-- Scattered petal particles -->
+  <circle cx="4" cy="10" r="0.4" fill="#C9A84E" opacity="0.2"/>
+  <circle cx="3" cy="18" r="0.3" fill="#C9A84E" opacity="0.15"/>
+  <circle cx="28" cy="20" r="0.35" fill="#C9A84E" opacity="0.18"/>
+  <circle cx="26" cy="5" r="0.3" fill="#C9A84E" opacity="0.12"/>
+  <!-- Bottom ornamental line -->
+  <path d="M5 27 C10 26 22 26 27 27" fill="none" stroke="#C9A84E" stroke-width="0.3" opacity="0.2"/>
+</svg>
