@@ -13,10 +13,9 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog';
 import { Button } from '~/components/ui/button';
+import { apiClient } from '~/lib/apiClient';
 
 type QuestWithWaypoints = Quest & { waypoints: Waypoint[] };
-
-const JOB_MANAGER_URL = 'http://localhost:33333';
 
 const updateQuestApi = async (
   id: string,
@@ -26,12 +25,7 @@ const updateQuestApi = async (
     territoryIds?: string[];
   }
 ): Promise<void> => {
-  const res = await fetch(`${JOB_MANAGER_URL}/api/quests/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  await apiClient.put(`/api/quests/${id}`, body);
 };
 
 const Section = ({

@@ -5,12 +5,7 @@ import Link from 'next/link';
 import type { Quest, QuestStatus } from '@expedition/shared';
 import { Button } from '~/components/ui/button';
 import { useQuests } from '~/hooks/api/useQuests';
-
-const JOB_MANAGER_URL = 'http://localhost:33333';
-
-const parseJson = <T,>(text: string): T =>
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-  JSON.parse(text);
+import { apiClient } from '~/lib/apiClient';
 
 const statusLabel: Record<QuestStatus, string> = {
   draft: '下書き',
@@ -77,7 +72,8 @@ const QuestsPage = (): ReactNode => {
   const { data: quests = [], mutate } = useQuests().useIndex();
 
   const handleDelete = (id: string): void => {
-    fetch(`${JOB_MANAGER_URL}/api/quests/${id}`, { method: 'DELETE' })
+    apiClient
+      .delete(`/api/quests/${id}`)
       .then(() => mutate())
       .catch(() => {});
   };
@@ -89,20 +85,10 @@ const QuestsPage = (): ReactNode => {
     setError(null);
 
     try {
-      const res = await fetch(`${JOB_MANAGER_URL}/api/quests`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || undefined,
-        }),
+      await apiClient.post('/api/quests', {
+        title: title.trim(),
+        description: description.trim() || undefined,
       });
-
-      if (!res.ok) {
-        const text = await res.text();
-        const body = parseJson<{ error?: string }>(text);
-        throw new Error(body.error ?? `HTTP ${res.status}`);
-      }
 
       setTitle('');
       setDescription('');
