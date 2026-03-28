@@ -92,3 +92,39 @@ export const updateQuestStatus = async (
   if (result.affectedRows === 0) return undefined;
   return findQuestById(id);
 };
+
+export const updateQuest = async (
+  id: string,
+  data: {
+    title?: string;
+    description?: string | null;
+    territoryIds?: string[];
+  }
+): Promise<Quest | undefined> => {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  if (data.title !== undefined) {
+    fields.push('title = ?');
+    values.push(data.title);
+  }
+  if (data.description !== undefined) {
+    fields.push('description = ?');
+    values.push(data.description);
+  }
+
+  if (fields.length > 0) {
+    values.push(id);
+    const [result] = await pool.query<ResultSetHeader>(
+      `UPDATE quests SET ${fields.join(', ')} WHERE id = ?`,
+      values
+    );
+    if (result.affectedRows === 0) return undefined;
+  }
+
+  if (data.territoryIds !== undefined) {
+    await setQuestTerritories(id, data.territoryIds);
+  }
+
+  return findQuestById(id);
+};

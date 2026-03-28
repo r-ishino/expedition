@@ -4,6 +4,7 @@ import {
   findAllQuests,
   findQuestById,
   insertQuest,
+  updateQuest,
   deleteQuest,
 } from '~/repos/quests.repo';
 import {
@@ -35,6 +36,23 @@ app.post('/', async (c) => {
     territoryIds: body.territoryIds,
   });
   return c.json(quest, 201);
+});
+
+// PUT /api/quests/:id — 更新
+app.put('/:id', async (c) => {
+  const id = c.req.param('id');
+  const quest = await findQuestById(id);
+  if (!quest) {
+    return c.json({ error: 'quest not found' }, 404);
+  }
+
+  const body = await c.req.json<QuestRequest>();
+  const updated = await updateQuest(id, {
+    title: body.title?.trim(),
+    description: body.description?.trim(),
+    territoryIds: body.territoryIds,
+  });
+  return c.json(updated);
 });
 
 // DELETE /api/quests/:id — 削除（子waypoints も削除）
