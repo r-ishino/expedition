@@ -47,6 +47,9 @@ CLAUDE.md
 # worktrees (PoC-3)
 .worktrees/
 
+# stream logs (runtime data)
+data/
+
 # vercel
 .vercel
 

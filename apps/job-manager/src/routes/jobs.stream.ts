@@ -1,22 +1,73 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import type { JobStreamEvent } from '@expedition/shared';
-import { getJob, getJobEmitter } from '~/services/claude-runner';
+import {
+  getJob,
+  getJobEmitter,
+  getJobEventHistory,
+} from '~/services/claude-runner';
+import { readStreamEvents } from '~/services/stream-log';
+
+/** JSONL イベント末尾に done がなければ補完する（中断されたジョブ対応） */
+const ensureDoneEvent = (events: JobStreamEvent[]): JobStreamEvent[] => {
+  const hasDone = events.some((e) => e.type === 'done');
+  if (hasDone) return events;
+
+  return [
+    ...events,
+    {
+      type: 'done',
+      status: 'failed',
+      exitCode: null,
+      durationMs: null,
+      costUsd: null,
+    },
+  ];
+};
 
 const app = new Hono();
 
-app.get('/:id/stream', (c) => {
+app.get('/:id/stream', async (c) => {
   const id = c.req.param('id');
   const job = getJob(id);
 
+  // インメモリにジョブがない場合（サーバー再起動後など）
+  // JSONL ファイルがあればそこから復元
   if (!job) {
+    const rawEvents = await readStreamEvents(id);
+    if (rawEvents.length > 0) {
+      const events = ensureDoneEvent(rawEvents);
+      return streamSSE(c, async (stream) => {
+        for (const event of events) {
+          await stream.writeSSE({
+            event: event.type,
+            data: JSON.stringify(event),
+          });
+        }
+      });
+    }
     return c.json({ error: 'job not found' }, 404);
   }
 
-  // すでに完了済みのジョブは即座に done を返して終了
+  // すでに完了済みのジョブは JSONL から全イベントを復元して再送
   if (job.status === 'completed' || job.status === 'failed') {
+    const rawEvents = await readStreamEvents(id);
+
+    // JSONL にイベントがあればそのまま再送
+    if (rawEvents.length > 0) {
+      const events = ensureDoneEvent(rawEvents);
+      return streamSSE(c, async (stream) => {
+        for (const event of events) {
+          await stream.writeSSE({
+            event: event.type,
+            data: JSON.stringify(event),
+          });
+        }
+      });
+    }
+
+    // フォールバック: JSONL が無い場合は従来の stdout ベース再送
     return streamSSE(c, async (stream) => {
-      // 蓄積済みの stdout があれば text ブロックとしてまとめて送信
       if (job.stdout) {
         const startEvent: JobStreamEvent = {
           type: 'block_start',
@@ -71,38 +122,15 @@ app.get('/:id/stream', (c) => {
   }
 
   return streamSSE(c, async (stream) => {
-    // すでに蓄積済みの stdout があれば text ブロックとして送信
-    if (job.stdout) {
-      const startEvent: JobStreamEvent = {
-        type: 'block_start',
-        index: -1,
-        blockType: 'text',
-        turnIndex: 0,
-      };
-      await stream.writeSSE({
-        event: 'block_start',
-        data: JSON.stringify(startEvent),
-      });
-
-      const deltaEvent: JobStreamEvent = {
-        type: 'block_delta',
-        index: -1,
-        blockType: 'text',
-        text: job.stdout,
-      };
-      await stream.writeSSE({
-        event: 'block_delta',
-        data: JSON.stringify(deltaEvent),
-      });
-
-      const stopEvent: JobStreamEvent = {
-        type: 'block_stop',
-        index: -1,
-      };
-      await stream.writeSSE({
-        event: 'block_stop',
-        data: JSON.stringify(stopEvent),
-      });
+    // インメモリ履歴があれば先に送信（途中接続のキャッチアップ）
+    const history = getJobEventHistory(id);
+    if (history) {
+      for (const event of history) {
+        await stream.writeSSE({
+          event: event.type,
+          data: JSON.stringify(event),
+        });
+      }
     }
 
     let closed = false;

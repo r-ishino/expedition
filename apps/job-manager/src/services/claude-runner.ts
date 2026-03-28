@@ -8,6 +8,7 @@ import type {
 } from '@expedition/shared';
 import { config } from '../config';
 import { createWorktree, removeWorktree } from './worktree';
+import { appendStreamEvent } from './stream-log';
 
 // インメモリでジョブを管理（PoC用）
 // TODO: post-PoC で repos/jobs.repo.ts に置き換えてMySQL永続化する
@@ -15,6 +16,15 @@ const jobs = new Map<string, JobResponse>();
 
 // ジョブごとのストリームイベントを配信する EventEmitter
 const jobEmitters = new Map<string, EventEmitter>();
+
+// ジョブごとのストリームイベント履歴（リロード時の復元用）
+const jobEventHistory = new Map<string, JobStreamEvent[]>();
+
+export const getJobEventHistory = (id: string): JobStreamEvent[] | undefined =>
+  jobEventHistory.get(id);
+
+// handleStreamJson で result イベントを受信済みかどうか（done 二重発火防止）
+const jobReceivedResult = new Map<string, boolean>();
 
 // ジョブごとのオプションを保持（startJob で repoPath を参照するため）
 type RunClaudeOptions = {
@@ -86,6 +96,20 @@ const toBlockType = (cbType: string): StreamBlockType | undefined => {
   return undefined;
 };
 
+/** イベントを履歴に追加し、JSONL に書き込み、emitter に配信する */
+const emitAndPersist = (
+  jobId: string,
+  emitter: EventEmitter,
+  event: JobStreamEvent
+): void => {
+  const history = jobEventHistory.get(jobId);
+  if (history) {
+    history.push(event);
+  }
+  appendStreamEvent(jobId, event);
+  emitter.emit('stream', event);
+};
+
 /** stream-json の各行を処理し、適切な SSE イベントを発行する */
 const handleStreamJson = (
   parsed: Record<string, unknown>,
@@ -124,7 +148,7 @@ const handleStreamJson = (
           blockType === 'tool_use' ? getString(contentBlock, 'id') : undefined,
         turnIndex: 0,
       };
-      emitter.emit('stream', startEvent);
+      emitAndPersist(job.id, emitter, startEvent);
     }
 
     // ブロック差分
@@ -162,7 +186,7 @@ const handleStreamJson = (
         blockType,
         text,
       };
-      emitter.emit('stream', deltaEvent);
+      emitAndPersist(job.id, emitter, deltaEvent);
     }
 
     // ブロック終了
@@ -171,7 +195,7 @@ const handleStreamJson = (
         type: 'block_stop',
         index,
       };
-      emitter.emit('stream', stopEvent);
+      emitAndPersist(job.id, emitter, stopEvent);
     }
   } else if (type === 'result') {
     const durationMs = getNumber(parsed, 'duration_ms') ?? null;
@@ -179,6 +203,7 @@ const handleStreamJson = (
     const isError = getBoolean(parsed, 'is_error') === true;
 
     job.exitCode = isError ? 1 : 0;
+    jobReceivedResult.set(job.id, true);
 
     const doneEvent: JobStreamEvent = {
       type: 'done',
@@ -187,7 +212,7 @@ const handleStreamJson = (
       durationMs,
       costUsd,
     };
-    emitter.emit('stream', doneEvent);
+    emitAndPersist(job.id, emitter, doneEvent);
   }
 };
 
@@ -313,14 +338,18 @@ const startJob = async (job: JobResponse): Promise<void> => {
     job.status = code === 0 && !timedOut ? 'completed' : 'failed';
     job.completedAt = new Date().toISOString();
 
-    const doneEvent: JobStreamEvent = {
-      type: 'done',
-      status: job.status,
-      exitCode: job.exitCode,
-      durationMs: null,
-      costUsd: null,
-    };
-    emitter.emit('stream', doneEvent);
+    // handleStreamJson で result イベントを受信済みなら done は発行済み
+    if (!jobReceivedResult.get(id)) {
+      const doneEvent: JobStreamEvent = {
+        type: 'done',
+        status: job.status,
+        exitCode: job.exitCode,
+        durationMs: null,
+        costUsd: null,
+      };
+      emitAndPersist(id, emitter, doneEvent);
+    }
+    jobReceivedResult.delete(id);
     emitter.emit('end');
 
     cleanup();
@@ -336,7 +365,7 @@ const startJob = async (job: JobResponse): Promise<void> => {
       type: 'error',
       message: err.message,
     };
-    emitter.emit('stream', errorEvent);
+    emitAndPersist(id, emitter, errorEvent);
 
     const doneEvent: JobStreamEvent = {
       type: 'done',
@@ -345,7 +374,7 @@ const startJob = async (job: JobResponse): Promise<void> => {
       durationMs: null,
       costUsd: null,
     };
-    emitter.emit('stream', doneEvent);
+    emitAndPersist(id, emitter, doneEvent);
     emitter.emit('end');
 
     cleanup();
@@ -407,6 +436,7 @@ export const runClaude = async (
 
   jobs.set(id, job);
   jobOptionsMap.set(id, options);
+  jobEventHistory.set(id, []);
 
   const emitter = new EventEmitter();
   jobEmitters.set(id, emitter);

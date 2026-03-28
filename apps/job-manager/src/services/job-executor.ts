@@ -1,7 +1,15 @@
-import type { Quest } from '@expedition/shared';
+import type { JobStreamDone, Quest } from '@expedition/shared';
 import { runClaude, getJob, getJobEmitter } from './claude-runner';
 import { updateQuestStatus } from '~/repos/quests.repo';
 import { findTerritoryById } from '~/repos/territories.repo';
+import {
+  insertQuestPlanningJob,
+  updateQuestPlanningJobStatus,
+} from '~/repos/quest-planning-jobs.repo';
+import {
+  countQuestPlanningMessages,
+  insertQuestPlanningMessage,
+} from '~/repos/quest-planning-messages.repo';
 import { getHandler } from './job-handlers';
 import type { RepoInfo } from './job-handlers/types';
 
@@ -30,8 +38,50 @@ export const executeJob = async (
   const maxBudgetUsd = jobType === 'decompose' ? 0.5 : undefined;
   const job = await runClaude({ prompt, cwd, maxBudgetUsd });
 
+  // DB にジョブレコードを作成（runtimeJobId でストリーム復元可能にする）
+  const planningJob = await insertQuestPlanningJob({
+    questId: quest.id,
+    runtimeJobId: job.id,
+    jobType,
+    prompt,
+  });
+
+  // 会話メッセージを保存（user → assistant の順）
+  const msgCount = await countQuestPlanningMessages(quest.id);
+  const userText = instruction ?? prompt;
+  await insertQuestPlanningMessage({
+    questId: quest.id,
+    role: 'user',
+    content: userText,
+    sortOrder: msgCount,
+  });
+  await insertQuestPlanningMessage({
+    questId: quest.id,
+    role: 'assistant',
+    planningJobId: planningJob.id,
+    sortOrder: msgCount + 1,
+  });
+
   const emitter = getJobEmitter(job.id);
   if (emitter) {
+    // done イベントからコスト・時間を取得してDB更新
+    emitter.on('stream', (event: JobStreamDone) => {
+      if (event.type !== 'done') return;
+      updateQuestPlanningJobStatus(planningJob.id, event.status, {
+        exitCode: event.exitCode,
+        durationMs: event.durationMs,
+        costUsd:
+          event.costUsd !== null && event.costUsd !== undefined
+            ? String(event.costUsd)
+            : null,
+      }).catch((err: unknown) => {
+        console.error(
+          `Failed to update planning job status for ${planningJob.id}:`,
+          err
+        );
+      });
+    });
+
     emitter.on('end', () => {
       const completedJob = getJob(job.id);
       if (!completedJob) return;

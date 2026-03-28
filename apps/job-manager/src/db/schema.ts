@@ -107,6 +107,39 @@ export const waypointDependencies = mysqlTable('waypoint_dependencies', {
 });
 
 // ------------------------------------------------------------
+// quest_planning_jobs — Quest 計画フェーズのジョブ実行記録
+// ------------------------------------------------------------
+export const questPlanningJobs = mysqlTable('quest_planning_jobs', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  questId: varchar('quest_id', { length: 36 }).notNull(),
+  // インメモリのジョブID（SSEストリームで使用）
+  runtimeJobId: varchar('runtime_job_id', { length: 36 }).notNull(),
+  jobType: varchar('job_type', { length: 50 }).notNull(),
+  prompt: text('prompt').notNull(),
+  status: varchar('status', { length: 20 }).notNull(),
+  exitCode: int('exit_code'),
+  durationMs: int('duration_ms'),
+  costUsd: varchar('cost_usd', { length: 20 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  completedAt: timestamp('completed_at'),
+});
+
+// ------------------------------------------------------------
+// quest_planning_messages — Quest 計画フェーズの会話メッセージ
+// ------------------------------------------------------------
+export const questPlanningMessages = mysqlTable('quest_planning_messages', {
+  id: varchar('id', { length: 36 }).primaryKey(),
+  questId: varchar('quest_id', { length: 36 }).notNull(),
+  role: varchar('role', { length: 20 }).notNull(),
+  // user メッセージ: ユーザーの入力テキスト / assistant: null
+  content: text('content'),
+  // assistant メッセージ: 紐づくジョブID / user: null
+  planningJobId: varchar('planning_job_id', { length: 36 }),
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// ------------------------------------------------------------
 // challenges — Claude Code の実行記録（挑戦）
 // ------------------------------------------------------------
 export const challenges = mysqlTable('challenges', {

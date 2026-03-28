@@ -11,6 +11,8 @@ import {
   findWaypointsByQuestId,
   deleteWaypointsByQuestId,
 } from '~/repos/waypoints.repo';
+import { findQuestPlanningJobsByQuestId } from '~/repos/quest-planning-jobs.repo';
+import { findQuestPlanningMessagesByQuestId } from '~/repos/quest-planning-messages.repo';
 import { executeJob } from '~/services/job-executor';
 import { app as attachmentsApp } from './attachments';
 import { app as waypointsApp } from './waypoints';
@@ -107,6 +109,30 @@ app.post('/:id/jobs', async (c) => {
 
   const { jobId } = await executeJob(body.jobType, quest, body.instruction);
   return c.json({ jobId }, 202);
+});
+
+// GET /api/quests/:id/planning-messages — 計画メッセージ一覧
+app.get('/:id/planning-messages', async (c) => {
+  const id = c.req.param('id');
+  const quest = await findQuestById(id);
+  if (!quest) {
+    return c.json({ error: 'quest not found' }, 404);
+  }
+
+  const messages = await findQuestPlanningMessagesByQuestId(id);
+  return c.json(messages);
+});
+
+// GET /api/quests/:id/planning-jobs — 計画ジョブ一覧
+app.get('/:id/planning-jobs', async (c) => {
+  const id = c.req.param('id');
+  const quest = await findQuestById(id);
+  if (!quest) {
+    return c.json({ error: 'quest not found' }, 404);
+  }
+
+  const jobs = await findQuestPlanningJobsByQuestId(id);
+  return c.json(jobs);
 });
 
 // サブルート

@@ -88,6 +88,38 @@ export type JobStreamEvent =
   | JobStreamDone
   | JobStreamError;
 
+// QuestPlanningJob（計画フェーズのジョブ実行記録）
+
+export type QuestPlanningJob = {
+  id: string;
+  questId: string;
+  runtimeJobId: string;
+  jobType: string;
+  prompt: string;
+  status: JobStatus;
+  exitCode: number | null;
+  durationMs: number | null;
+  costUsd: string | null;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+// QuestPlanningMessage（計画フェーズの会話メッセージ）
+
+export type QuestPlanningMessageRole = 'user' | 'assistant';
+
+export type QuestPlanningMessage = {
+  id: string;
+  questId: string;
+  role: QuestPlanningMessageRole;
+  content: string | null;
+  planningJobId: string | null;
+  /** assistant メッセージの場合、紐づくジョブの runtimeJobId */
+  runtimeJobId: string | null;
+  sortOrder: number;
+  createdAt: string;
+};
+
 // Quest（依頼）
 
 export type QuestStatus = 'draft' | 'decomposing' | 'decomposed';
