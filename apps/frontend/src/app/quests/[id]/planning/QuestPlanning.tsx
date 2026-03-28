@@ -7,7 +7,7 @@ import { WaypointListPane } from './WaypointListPane';
 import { WorkspacePane } from './WorkspacePane';
 
 export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
-  const { data: quest } = useQuests().useShow(questId);
+  const { data: quest, mutate } = useQuests().useShow(questId);
 
   if (!quest) {
     return (
@@ -31,7 +31,7 @@ export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
       <div className="flex min-h-0 flex-1">
         {/* Left pane: Quest info */}
         <div className="w-[280px] shrink-0 overflow-y-auto border-r border-zinc-200 bg-zinc-50">
-          <QuestInfoPane quest={quest} />
+          <QuestInfoPane onUpdated={mutate} quest={quest} />
         </div>
 
         {/* Middle pane: Waypoint list */}
