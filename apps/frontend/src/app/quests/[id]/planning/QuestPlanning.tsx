@@ -24,6 +24,10 @@ export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
   const handleDecompose = async (): Promise<void> => {
     setManualDecomposing(true);
     try {
+      if (quest && quest.waypoints.length > 0) {
+        await apiClient.delete(`/api/quests/${questId}/waypoints`);
+        await mutate({ ...quest, waypoints: [] }, false);
+      }
       await workspaceRef.current?.runJob('decompose', DECOMPOSE_INSTRUCTION);
     } catch {
       setManualDecomposing(false);
