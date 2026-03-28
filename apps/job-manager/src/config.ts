@@ -17,7 +17,7 @@ export const config = {
     /** 同時実行可能なジョブの最大数 */
     maxConcurrent: Number(process.env.MAX_CONCURRENT_JOBS ?? 3),
 
-    /** ジョブのタイムアウト（ミリ秒）。デフォルト5分 */
-    timeoutMs: Number(process.env.JOB_TIMEOUT_MS ?? 5 * 60 * 1000),
+    /** ジョブのタイムアウト（ミリ秒）。デフォルト3分 */
+    timeoutMs: Number(process.env.JOB_TIMEOUT_MS ?? 3 * 60 * 1000),
   },
 } as const;
