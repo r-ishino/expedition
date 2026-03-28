@@ -34,12 +34,14 @@ type UseStreamBlocksReturn = {
 };
 
 export const useStreamBlocks = (options?: {
-  onDone?: (event: JobStreamDone) => void;
+  onDone?: (event: JobStreamDone, finalBlocks: StreamBlock[]) => void;
   onError?: (event: JobStreamError) => void;
 }): UseStreamBlocksReturn => {
   const [blocks, setBlocks] = useState<StreamBlock[]>([]);
   const [streaming, setStreaming] = useState(false);
   const esRef = useRef<EventSource | null>(null);
+  // Reactバッチ処理の影響を受けずに最新のブロックを参照するためのref
+  const blocksRef = useRef<StreamBlock[]>([]);
 
   const reset = (): void => {
     if (esRef.current) {
@@ -47,7 +49,17 @@ export const useStreamBlocks = (options?: {
       esRef.current = null;
     }
     setBlocks([]);
+    blocksRef.current = [];
     setStreaming(false);
+  };
+
+  const updateBlocks = (
+    updater: (prev: StreamBlock[]) => StreamBlock[]
+  ): void => {
+    // blocksRef をReactバッチに依存せず同期的に更新する
+    // これにより done イベント時に常に最新のブロックを参照できる
+    blocksRef.current = updater(blocksRef.current);
+    setBlocks(blocksRef.current);
   };
 
   const startStream = (jobId: string): void => {
@@ -59,7 +71,7 @@ export const useStreamBlocks = (options?: {
 
     es.addEventListener('block_start', (e: MessageEvent<string>) => {
       const data = apiClient.parseJson<BlockStartPayload>(e.data);
-      setBlocks((prev) => [
+      updateBlocks((prev) => [
         ...prev,
         {
           index: data.index,
@@ -75,7 +87,7 @@ export const useStreamBlocks = (options?: {
 
     es.addEventListener('block_delta', (e: MessageEvent<string>) => {
       const data = apiClient.parseJson<JobStreamBlockDelta>(e.data);
-      setBlocks((prev) => {
+      updateBlocks((prev) => {
         const targetIdx = prev.findLastIndex((b) => b.index === data.index);
         if (targetIdx === -1) return prev;
 
@@ -90,7 +102,7 @@ export const useStreamBlocks = (options?: {
 
     es.addEventListener('block_stop', (e: MessageEvent<string>) => {
       const data = apiClient.parseJson<JobStreamBlockStop>(e.data);
-      setBlocks((prev) => {
+      updateBlocks((prev) => {
         const targetIdx = prev.findLastIndex((b) => b.index === data.index);
         if (targetIdx === -1) return prev;
 
@@ -108,7 +120,8 @@ export const useStreamBlocks = (options?: {
       setStreaming(false);
       es.close();
       esRef.current = null;
-      options?.onDone?.(data);
+      // blocksRef は同期的に更新されるため、バッチ処理の影響を受けない
+      options?.onDone?.(data, [...blocksRef.current]);
     });
 
     es.addEventListener('error', (e: MessageEvent<string>) => {

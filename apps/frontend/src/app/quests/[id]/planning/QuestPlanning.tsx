@@ -16,15 +16,17 @@ const DECOMPOSE_INSTRUCTION =
 
 export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
   const { data: quest, mutate } = useQuests().useShow(questId);
-  const [decomposing, setDecomposing] = useState(false);
+  const [manualDecomposing, setManualDecomposing] = useState(false);
+  // Quest の DB ステータスが decomposing、またはボタン押下で decomposing
+  const decomposing = manualDecomposing || quest?.status === 'decomposing';
   const workspaceRef = useRef<WorkspacePaneHandle>(null);
 
   const handleDecompose = async (): Promise<void> => {
-    setDecomposing(true);
+    setManualDecomposing(true);
     try {
       await workspaceRef.current?.runJob('decompose', DECOMPOSE_INSTRUCTION);
     } catch {
-      setDecomposing(false);
+      setManualDecomposing(false);
     }
   };
 
@@ -36,7 +38,7 @@ export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
 
   const handlePollingComplete = (data: QuestWithWaypoints): void => {
     mutate(data, false).catch(() => {});
-    setDecomposing(false);
+    setManualDecomposing(false);
   };
 
   if (!quest) {

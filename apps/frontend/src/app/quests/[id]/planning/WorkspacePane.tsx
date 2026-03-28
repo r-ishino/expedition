@@ -1,12 +1,14 @@
 'use client';
 
 import {
+  useEffect,
   useImperativeHandle,
   useRef,
   useState,
   type ReactNode,
   type Ref,
 } from 'react';
+import type { QuestPlanningMessage } from '@expedition/shared';
 import { useQuests } from '~/hooks/api/useQuests';
 import { useStreamBlocks, type StreamBlock } from '~/hooks/useStreamBlocks';
 import { StreamOutput } from '~/components/stream/StreamOutput';
@@ -71,22 +73,62 @@ export const WorkspacePane = ({
   };
 
   const { blocks, streaming, startStream } = useStreamBlocks({
-    onDone: () => {
+    onDone: (_event, finalBlocks) => {
+      // ストリーム完了時にブロックをメッセージ履歴に追加
+      // blocksRef 経由で取得するため、Reactバッチ処理の影響を受けない
+      if (finalBlocks.length > 0) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', blocks: finalBlocks },
+        ]);
+      }
       setTimeout(() => {
         mutate().catch(() => {});
       }, 1000);
     },
   });
 
-  // streaming 完了時にメッセージ履歴に追加
-  const prevStreamingRef = useRef(false);
-  if (prevStreamingRef.current && !streaming && blocks.length > 0) {
-    setMessages((prev) => [
-      ...prev,
-      { role: 'assistant', blocks: [...blocks] },
-    ]);
-  }
-  prevStreamingRef.current = streaming;
+  // マウント時に会話メッセージを復元
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+
+    apiClient
+      .fetch<QuestPlanningMessage[]>(`/api/quests/${questId}/planning-messages`)
+      .then((msgs) => {
+        if (msgs.length === 0) return;
+
+        const restored: Message[] = [];
+        let lastAssistantJobId: string | null = null;
+
+        for (const msg of msgs) {
+          if (msg.role === 'user') {
+            restored.push({
+              role: 'user',
+              blocks: [],
+              text: msg.content ?? '',
+            });
+          } else if (msg.role === 'assistant' && msg.runtimeJobId) {
+            lastAssistantJobId = msg.runtimeJobId;
+            // 最後の assistant 以外は placeholder（startStream の onDone で埋まらないため空）
+            restored.push({ role: 'assistant', blocks: [] });
+          }
+        }
+
+        // 最後の assistant メッセージ以外を先に表示
+        // 最後の assistant はストリーム再接続で復元するため除外
+        if (lastAssistantJobId) {
+          setMessages(restored.slice(0, -1));
+          startStream(lastAssistantJobId);
+        } else {
+          setMessages(restored);
+        }
+      })
+      .catch(() => {
+        // 復元失敗は無視
+      });
+  }, [questId, startStream]);
 
   // blocks 変更時にスクロール
   if (streaming) {
