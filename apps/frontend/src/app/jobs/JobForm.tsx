@@ -4,7 +4,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import type {
   JobResponse,
   JobStatus,
-  JobStreamDelta,
+  JobStreamBlockDelta,
   JobStreamDone,
   JobStreamError,
 } from '@expedition/shared';
@@ -116,16 +116,19 @@ export const JobForm = (): ReactNode => {
     const es = new EventSource(apiClient.streamUrl(jobId));
     eventSourcesRef.current.set(jobId, es);
 
-    es.addEventListener('delta', (e: MessageEvent<string>) => {
-      const data = apiClient.parseJson<JobStreamDelta>(e.data);
-      updateEntry(jobId, (prev) => ({
-        ...prev,
-        streamedOutput: prev.streamedOutput + data.text,
-        job: {
-          ...prev.job,
-          status: prev.job.status === 'queued' ? 'running' : prev.job.status,
-        },
-      }));
+    es.addEventListener('block_delta', (e: MessageEvent<string>) => {
+      const data = apiClient.parseJson<JobStreamBlockDelta>(e.data);
+      // text ブロックのみ出力に蓄積
+      if (data.blockType === 'text') {
+        updateEntry(jobId, (prev) => ({
+          ...prev,
+          streamedOutput: prev.streamedOutput + data.text,
+          job: {
+            ...prev.job,
+            status: prev.job.status === 'queued' ? 'running' : prev.job.status,
+          },
+        }));
+      }
     });
 
     es.addEventListener('done', (e: MessageEvent<string>) => {
