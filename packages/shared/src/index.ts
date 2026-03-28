@@ -99,6 +99,11 @@ export type QuestRequest = {
   hasSchemaChange?: boolean;
 };
 
+export type QuestJobRequest = {
+  jobType: string;
+  instruction?: string;
+};
+
 // Waypoint（中間地点）
 
 export type WaypointStatus = 'pending' | 'approved' | 'reviewing';
