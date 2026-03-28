@@ -4,6 +4,7 @@ import {
   findWaypointsByQuestId,
   updateWaypoint,
   deleteWaypoint,
+  deleteWaypointsByQuestId,
 } from '~/repos/waypoints.repo';
 
 const app = new Hono();
@@ -38,6 +39,13 @@ app.put('/:questId/waypoints/:waypointId', async (c) => {
     return c.json({ error: 'waypoint not found' }, 404);
   }
   return c.json(updated);
+});
+
+// DELETE /api/quests/:questId/waypoints — quest配下のwaypoint全削除
+app.delete('/:questId/waypoints', async (c) => {
+  const { questId } = c.req.param();
+  await deleteWaypointsByQuestId(questId);
+  return c.json({ ok: true });
 });
 
 // DELETE /api/quests/:questId/waypoints/:waypointId — waypoint削除

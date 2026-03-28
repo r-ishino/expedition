@@ -1,8 +1,16 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { Waypoint, WaypointStatus } from '@expedition/shared';
 import { Button } from '~/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog';
 
 const statusLabel: Record<WaypointStatus, string> = {
   pending: '検討中',
@@ -135,9 +143,43 @@ export const WaypointListPane = ({
   decomposing: boolean;
 }): ReactNode => {
   const pendingCount = waypoints.filter((w) => w.status === 'pending').length;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const handleRetry = (): void => {
+    setConfirmOpen(false);
+    onRequestDecompose().catch(() => {});
+  };
 
   return (
     <div className="flex h-full flex-col">
+      {/* Confirm dialog */}
+      <Dialog onOpenChange={setConfirmOpen} open={confirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>中継地点をやり直しますか？</DialogTitle>
+            <DialogDescription>
+              現在の中継地点をすべて削除し、AIが新しいたたき台を作成します。この操作は取り消せません。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setConfirmOpen(false)}
+              size="sm"
+              variant="ghost"
+            >
+              キャンセル
+            </Button>
+            <Button
+              className="bg-zinc-900 text-white hover:bg-zinc-800"
+              onClick={handleRetry}
+              size="sm"
+            >
+              やり直す
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-zinc-200 px-5">
         <div className="flex items-center gap-2">
@@ -146,6 +188,23 @@ export const WaypointListPane = ({
             {waypoints.length}
           </span>
         </div>
+        {waypoints.length > 0 && (
+          <Button
+            disabled={decomposing}
+            onClick={() => setConfirmOpen(true)}
+            size="sm"
+            variant="ghost"
+          >
+            {decomposing ? (
+              <>
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+                作成中...
+              </>
+            ) : (
+              'やり直す'
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Cards with integrated timeline */}
