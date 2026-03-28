@@ -16,11 +16,37 @@ app.get('/:id/stream', (c) => {
   // すでに完了済みのジョブは即座に done を返して終了
   if (job.status === 'completed' || job.status === 'failed') {
     return streamSSE(c, async (stream) => {
-      // 蓄積済みの stdout があればまとめて送信
+      // 蓄積済みの stdout があれば text ブロックとしてまとめて送信
       if (job.stdout) {
+        const startEvent: JobStreamEvent = {
+          type: 'block_start',
+          index: 0,
+          blockType: 'text',
+          turnIndex: 0,
+        };
         await stream.writeSSE({
-          event: 'delta',
-          data: JSON.stringify({ type: 'delta', text: job.stdout }),
+          event: 'block_start',
+          data: JSON.stringify(startEvent),
+        });
+
+        const deltaEvent: JobStreamEvent = {
+          type: 'block_delta',
+          index: 0,
+          blockType: 'text',
+          text: job.stdout,
+        };
+        await stream.writeSSE({
+          event: 'block_delta',
+          data: JSON.stringify(deltaEvent),
+        });
+
+        const stopEvent: JobStreamEvent = {
+          type: 'block_stop',
+          index: 0,
+        };
+        await stream.writeSSE({
+          event: 'block_stop',
+          data: JSON.stringify(stopEvent),
         });
       }
 
@@ -45,14 +71,37 @@ app.get('/:id/stream', (c) => {
   }
 
   return streamSSE(c, async (stream) => {
-    // すでに蓄積済みの stdout があれば最初に送信
+    // すでに蓄積済みの stdout があれば text ブロックとして送信
     if (job.stdout) {
+      const startEvent: JobStreamEvent = {
+        type: 'block_start',
+        index: -1,
+        blockType: 'text',
+        turnIndex: 0,
+      };
       await stream.writeSSE({
-        event: 'delta',
-        data: JSON.stringify({
-          type: 'delta',
-          text: job.stdout,
-        } satisfies JobStreamEvent),
+        event: 'block_start',
+        data: JSON.stringify(startEvent),
+      });
+
+      const deltaEvent: JobStreamEvent = {
+        type: 'block_delta',
+        index: -1,
+        blockType: 'text',
+        text: job.stdout,
+      };
+      await stream.writeSSE({
+        event: 'block_delta',
+        data: JSON.stringify(deltaEvent),
+      });
+
+      const stopEvent: JobStreamEvent = {
+        type: 'block_stop',
+        index: -1,
+      };
+      await stream.writeSSE({
+        event: 'block_stop',
+        data: JSON.stringify(stopEvent),
       });
     }
 

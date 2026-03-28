@@ -1,7 +1,11 @@
 import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import type { JobResponse, JobStreamEvent } from '@expedition/shared';
+import type {
+  JobResponse,
+  JobStreamEvent,
+  StreamBlockType,
+} from '@expedition/shared';
 import { config } from '../config';
 import { createWorktree, removeWorktree } from './worktree';
 
@@ -71,6 +75,15 @@ const getRecord = (
   return isRecord(val) ? val : undefined;
 };
 
+/** content_block の type から StreamBlockType を判定する */
+const toBlockType = (cbType: string): StreamBlockType | undefined => {
+  if (cbType === 'thinking') return 'thinking';
+  if (cbType === 'text') return 'text';
+  if (cbType === 'tool_use') return 'tool_use';
+  if (cbType === 'tool_result') return 'tool_result';
+  return undefined;
+};
+
 /** stream-json の各行を処理し、適切な SSE イベントを発行する */
 const handleStreamJson = (
   parsed: Record<string, unknown>,
@@ -84,21 +97,79 @@ const handleStreamJson = (
     if (!event) return;
 
     const eventType = getString(event, 'type');
+    const index = getNumber(event, 'index') ?? 0;
 
+    // ブロック開始
+    if (eventType === 'content_block_start') {
+      const contentBlock = getRecord(event, 'content_block');
+      if (!contentBlock) return;
+
+      const cbType = getString(contentBlock, 'type');
+      if (!cbType) return;
+
+      const blockType = toBlockType(cbType);
+      if (!blockType) return;
+
+      const startEvent: JobStreamEvent = {
+        type: 'block_start',
+        index,
+        blockType,
+        toolName:
+          blockType === 'tool_use'
+            ? getString(contentBlock, 'name')
+            : undefined,
+        toolUseId:
+          blockType === 'tool_use' ? getString(contentBlock, 'id') : undefined,
+        turnIndex: 0,
+      };
+      emitter.emit('stream', startEvent);
+    }
+
+    // ブロック差分
     if (eventType === 'content_block_delta') {
       const delta = getRecord(event, 'delta');
-      if (delta && getString(delta, 'type') === 'text_delta') {
-        const text = getString(delta, 'text');
-        if (!text) return;
+      if (!delta) return;
 
-        job.stdout += text;
+      const deltaType = getString(delta, 'type');
+      if (!deltaType) return;
 
-        const streamEvent: JobStreamEvent = {
-          type: 'delta',
-          text,
-        };
-        emitter.emit('stream', streamEvent);
+      let blockType: StreamBlockType | undefined;
+      let text: string | undefined;
+
+      if (deltaType === 'thinking_delta') {
+        blockType = 'thinking';
+        text = getString(delta, 'thinking');
+      } else if (deltaType === 'text_delta') {
+        blockType = 'text';
+        text = getString(delta, 'text');
+      } else if (deltaType === 'input_json_delta') {
+        blockType = 'tool_use';
+        text = getString(delta, 'partial_json');
       }
+
+      if (!blockType || !text) return;
+
+      // text_delta のみ stdout に蓄積（最終結果テキスト）
+      if (deltaType === 'text_delta') {
+        job.stdout += text;
+      }
+
+      const deltaEvent: JobStreamEvent = {
+        type: 'block_delta',
+        index,
+        blockType,
+        text,
+      };
+      emitter.emit('stream', deltaEvent);
+    }
+
+    // ブロック終了
+    if (eventType === 'content_block_stop') {
+      const stopEvent: JobStreamEvent = {
+        type: 'block_stop',
+        index,
+      };
+      emitter.emit('stream', stopEvent);
     }
   } else if (type === 'result') {
     const durationMs = getNumber(parsed, 'duration_ms') ?? null;

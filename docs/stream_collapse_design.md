@@ -201,11 +201,11 @@ StreamOutput (コンテナ)
 
 **タスク:**
 
-- [ ] `StreamBlockType`, `JobStreamBlockStart`, `JobStreamBlockDelta`, `JobStreamBlockStop` 型の追加
-- [ ] `handleStreamJson` で `content_block_start`, `content_block_stop` を処理
-- [ ] `content_block_delta` の `thinking_delta`, `input_json_delta` を処理
-- [ ] 既存の `JobStreamDelta` を `JobStreamBlockDelta` に移行
-- [ ] SSE エンドポイントは変更不要（`event.type` をそのまま SSE イベント名に使用）
+- [x] `StreamBlockType`, `JobStreamBlockStart`, `JobStreamBlockDelta`, `JobStreamBlockStop` 型の追加
+- [x] `handleStreamJson` で `content_block_start`, `content_block_stop` を処理
+- [x] `content_block_delta` の `thinking_delta`, `input_json_delta` を処理
+- [x] 既存の `JobStreamDelta` を `JobStreamBlockDelta` に移行
+- [x] SSE エンドポイントで完了済みジョブの再送を構造化イベントに対応
 
 ### Phase 2: フロントエンドの基本的なブロック表示
 
@@ -217,13 +217,13 @@ StreamOutput (コンテナ)
 
 **タスク:**
 
-- [ ] `StreamBlock` 状態管理 hook（`useStreamBlocks`）の実装
-- [ ] `StreamOutput` コンテナコンポーネント
-- [ ] `ThinkingBlock` — 折りたたみ + ストリーミング中の表示
-- [ ] `TextBlock` — テキスト表示（初期段階は `<pre>` のまま）
-- [ ] `ToolUseBlock` — ツール名ヘッダー + 折りたたみ入力表示
-- [ ] `ToolResultBlock` — 折りたたみ結果表示
-- [ ] QuestDetail / JobForm への組み込み
+- [x] `StreamBlock` 状態管理 hook（`useStreamBlocks`）の実装
+- [x] `StreamOutput` コンテナコンポーネント
+- [x] `ThinkingBlock` — 折りたたみ + ストリーミング中の表示
+- [x] `TextBlock` — テキスト表示（初期段階は `<pre>` のまま）
+- [x] `ToolUseBlock` — ツール名ヘッダー + 折りたたみ入力表示
+- [x] `ToolResultBlock` — 折りたたみ結果表示
+- [x] QuestDetail / WorkspacePane / JobForm への組み込み
 
 ### Phase 3: 集約と仕上げ
 

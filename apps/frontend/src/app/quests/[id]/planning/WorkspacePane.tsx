@@ -7,17 +7,15 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
-import type {
-  JobStreamDelta,
-  JobStreamDone,
-  JobStreamError,
-} from '@expedition/shared';
 import { useQuests } from '~/hooks/api/useQuests';
+import { useStreamBlocks, type StreamBlock } from '~/hooks/useStreamBlocks';
+import { StreamOutput } from '~/components/stream/StreamOutput';
 import { apiClient } from '~/lib/apiClient';
 
 type Message = {
   role: 'user' | 'assistant';
-  content: string;
+  blocks: StreamBlock[];
+  text?: string;
 };
 
 const MessageBubble = ({ message }: { message: Message }): ReactNode => {
@@ -38,9 +36,13 @@ const MessageBubble = ({ message }: { message: Message }): ReactNode => {
         <span className="text-[13px] font-semibold text-zinc-950">
           {isUser ? 'あなた' : 'Claude'}
         </span>
-        <pre className="whitespace-pre-wrap text-[13px] leading-relaxed text-zinc-950">
-          {message.content}
-        </pre>
+        {isUser && message.text ? (
+          <pre className="whitespace-pre-wrap text-[13px] leading-relaxed text-zinc-950">
+            {message.text}
+          </pre>
+        ) : (
+          <StreamOutput blocks={message.blocks} streaming={false} />
+        )}
       </div>
     </div>
   );
@@ -59,10 +61,7 @@ export const WorkspacePane = ({
 }): ReactNode => {
   const { mutate } = useQuests().useShow(questId);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentStream, setCurrentStream] = useState('');
-  const [streaming, setStreaming] = useState(false);
   const [instruction, setInstruction] = useState('');
-  const eventSourceRef = useRef<EventSource | null>(null);
   const streamAreaRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToBottom = (): void => {
@@ -71,72 +70,57 @@ export const WorkspacePane = ({
     }
   };
 
+  const { blocks, streaming, startStream } = useStreamBlocks({
+    onDone: () => {
+      setTimeout(() => {
+        mutate().catch(() => {});
+      }, 1000);
+    },
+  });
+
+  // streaming 完了時にメッセージ履歴に追加
+  const prevStreamingRef = useRef(false);
+  if (prevStreamingRef.current && !streaming && blocks.length > 0) {
+    setMessages((prev) => [
+      ...prev,
+      { role: 'assistant', blocks: [...blocks] },
+    ]);
+  }
+  prevStreamingRef.current = streaming;
+
+  // blocks 変更時にスクロール
+  if (streaming) {
+    setTimeout(scrollToBottom, 0);
+  }
+
   const startJob = async (jobType: string, text: string): Promise<void> => {
     if (!text) return;
 
-    setMessages((prev) => [...prev, { role: 'user', content: text }]);
+    setMessages((prev) => [...prev, { role: 'user', blocks: [], text }]);
     setInstruction('');
-    setCurrentStream('');
-    setStreaming(true);
 
     try {
       const { jobId } = await apiClient.post<{ jobId: string }>(
         `/api/quests/${questId}/jobs`,
         { jobType, instruction: text }
       );
-
-      const es = new EventSource(apiClient.streamUrl(jobId));
-      eventSourceRef.current = es;
-
-      es.addEventListener('delta', (e: MessageEvent<string>) => {
-        const data = apiClient.parseJson<JobStreamDelta>(e.data);
-        setCurrentStream((prev) => prev + data.text);
-        setTimeout(scrollToBottom, 0);
-      });
-
-      es.addEventListener('done', (_e: MessageEvent<string>) => {
-        apiClient.parseJson<JobStreamDone>(_e.data);
-        setCurrentStream((prev) => {
-          if (prev) {
-            setMessages((msgs) => [
-              ...msgs,
-              { role: 'assistant', content: prev },
-            ]);
-          }
-          return '';
-        });
-        setStreaming(false);
-        es.close();
-        eventSourceRef.current = null;
-        setTimeout(() => {
-          mutate().catch(() => {});
-        }, 1000);
-      });
-
-      es.addEventListener('error', (e: MessageEvent<string>) => {
-        if (e.data) {
-          const data = apiClient.parseJson<JobStreamError>(e.data);
-          setCurrentStream((prev) => prev + `\nError: ${data.message}`);
-        }
-        setStreaming(false);
-        es.close();
-        eventSourceRef.current = null;
-      });
-
-      es.onerror = (): void => {
-        setStreaming(false);
-        es.close();
-        eventSourceRef.current = null;
-      };
+      startStream(jobId);
     } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: err instanceof Error ? err.message : 'Unknown error',
+          blocks: [
+            {
+              index: 0,
+              blockType: 'text',
+              content: err instanceof Error ? err.message : 'Unknown error',
+              completed: true,
+              turnIndex: 0,
+            },
+          ],
         },
       ]);
-      setStreaming(false);
     }
   };
 
@@ -174,7 +158,7 @@ export const WorkspacePane = ({
         className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6"
         ref={streamAreaRef}
       >
-        {messages.length === 0 && !currentStream ? (
+        {messages.length === 0 && !streaming ? (
           <div className="flex flex-1 items-center justify-center">
             <span className="text-sm text-zinc-400">
               指示を送信すると、ここに結果が表示されます
@@ -185,13 +169,18 @@ export const WorkspacePane = ({
             {messages.map((msg, i) => (
               <MessageBubble key={`${msg.role}-${String(i)}`} message={msg} />
             ))}
-            {currentStream && (
-              <MessageBubble
-                message={{
-                  role: 'assistant',
-                  content: currentStream,
-                }}
-              />
+            {streaming && blocks.length > 0 && (
+              <div className="flex gap-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-[11px] font-semibold text-zinc-500">
+                  C
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className="text-[13px] font-semibold text-zinc-950">
+                    Claude
+                  </span>
+                  <StreamOutput blocks={blocks} streaming={streaming} />
+                </div>
+              </div>
             )}
           </>
         )}

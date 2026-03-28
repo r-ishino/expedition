@@ -1,14 +1,8 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import type {
-  QuestStatus,
-  Waypoint,
-  JobStreamDelta,
-  JobStreamDone,
-  JobStreamError,
-} from '@expedition/shared';
+import type { QuestStatus, Waypoint } from '@expedition/shared';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -17,7 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
+import { StreamOutput } from '~/components/stream/StreamOutput';
 import { useQuests } from '~/hooks/api/useQuests';
+import { useStreamBlocks } from '~/hooks/useStreamBlocks';
 import { apiClient } from '~/lib/apiClient';
 
 const statusLabel: Record<QuestStatus, string> = {
@@ -190,59 +186,27 @@ const WaypointCard = ({
 
 export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
   const { data: quest, mutate } = useQuests().useShow(questId);
-  const [streamOutput, setStreamOutput] = useState('');
-  const [streaming, setStreaming] = useState(false);
   const [instruction, setInstruction] = useState('');
-  const eventSourceRef = useRef<EventSource | null>(null);
+
+  const { blocks, streaming, startStream, reset } = useStreamBlocks({
+    onDone: () => {
+      setTimeout(() => {
+        mutate().catch(() => {});
+      }, 1000);
+    },
+  });
 
   const decompose = async (): Promise<void> => {
-    setStreamOutput('');
-    setStreaming(true);
+    reset();
 
     try {
       const { jobId } = await apiClient.post<{ jobId: string }>(
         `/api/quests/${questId}/decompose`,
         { instruction: instruction.trim() || undefined }
       );
-
-      const es = new EventSource(apiClient.streamUrl(jobId));
-      eventSourceRef.current = es;
-
-      es.addEventListener('delta', (e: MessageEvent<string>) => {
-        const data = apiClient.parseJson<JobStreamDelta>(e.data);
-        setStreamOutput((prev) => prev + data.text);
-      });
-
-      es.addEventListener('done', (_e: MessageEvent<string>) => {
-        apiClient.parseJson<JobStreamDone>(_e.data);
-        setStreaming(false);
-        es.close();
-        eventSourceRef.current = null;
-        // quest を再取得して waypoints を反映
-        // 少し待ってから再取得（バックエンドで waypoint 保存が完了するのを待つ）
-        setTimeout(() => {
-          mutate().catch(() => {});
-        }, 1000);
-      });
-
-      es.addEventListener('error', (e: MessageEvent<string>) => {
-        if (e.data) {
-          const data = apiClient.parseJson<JobStreamError>(e.data);
-          setStreamOutput((prev) => prev + `\nError: ${data.message}`);
-        }
-        setStreaming(false);
-        es.close();
-        eventSourceRef.current = null;
-      });
-
-      es.onerror = (): void => {
-        setStreaming(false);
-        es.close();
-        eventSourceRef.current = null;
-      };
+      startStream(jobId);
     } catch (err) {
-      setStreamOutput(err instanceof Error ? err.message : 'Unknown error');
-      setStreaming(false);
+      console.error('Failed to start decompose:', err);
     }
   };
 
@@ -324,7 +288,7 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
           </div>
         </div>
 
-        {(streaming || streamOutput) && (
+        {(streaming || blocks.length > 0) && (
           <div className="mb-6">
             <h2 className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
               Claude Code 出力
@@ -332,9 +296,9 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
                 <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-yellow-500" />
               )}
             </h2>
-            <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 font-mono text-xs text-zinc-800 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200">
-              {streamOutput}
-            </pre>
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-950">
+              <StreamOutput blocks={blocks} streaming={streaming} />
+            </div>
           </div>
         )}
 

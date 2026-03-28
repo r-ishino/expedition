@@ -37,12 +37,33 @@ export type JobResponse = {
   branch: string | null;
 };
 
-// PoC-2: SSE ストリーミングイベント型
+// SSE ストリーミングイベント型
 
-/** テキスト差分イベント */
-export type JobStreamDelta = {
-  type: 'delta';
+/** コンテンツブロックの種別 */
+export type StreamBlockType = 'thinking' | 'text' | 'tool_use' | 'tool_result';
+
+/** ブロック開始イベント */
+export type JobStreamBlockStart = {
+  type: 'block_start';
+  index: number;
+  blockType: StreamBlockType;
+  toolName?: string;
+  toolUseId?: string;
+  turnIndex: number;
+};
+
+/** ブロック差分イベント */
+export type JobStreamBlockDelta = {
+  type: 'block_delta';
+  index: number;
+  blockType: StreamBlockType;
   text: string;
+};
+
+/** ブロック終了イベント */
+export type JobStreamBlockStop = {
+  type: 'block_stop';
+  index: number;
 };
 
 /** ジョブ完了イベント */
@@ -60,7 +81,12 @@ export type JobStreamError = {
   message: string;
 };
 
-export type JobStreamEvent = JobStreamDelta | JobStreamDone | JobStreamError;
+export type JobStreamEvent =
+  | JobStreamBlockStart
+  | JobStreamBlockDelta
+  | JobStreamBlockStop
+  | JobStreamDone
+  | JobStreamError;
 
 // Quest（依頼）
 
