@@ -72,20 +72,44 @@ export type Quest = {
   title: string;
   description: string | null;
   status: QuestStatus;
+  hasUiChange: boolean;
+  hasSchemaChange: boolean;
   territoryIds: string[];
+  attachments: QuestAttachment[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type QuestAttachmentType = 'reference' | 'ui_image';
+
+export type QuestAttachment = {
+  id: string;
+  questId: string;
+  type: QuestAttachmentType;
+  name: string;
+  path: string;
+  createdAt: string;
 };
 
 export type QuestRequest = {
   title: string;
   description?: string;
   territoryIds?: string[];
+  hasUiChange?: boolean;
+  hasSchemaChange?: boolean;
 };
 
 // Waypoint（中間地点）
 
 export type WaypointStatus = 'pending' | 'approved' | 'reviewing';
+
+export type WaypointDependency = {
+  id: string;
+  fromWaypointId: string;
+  toWaypointId: string;
+  label: string | null;
+  createdAt: string;
+};
 
 export type Waypoint = {
   id: string;
@@ -98,6 +122,7 @@ export type Waypoint = {
   uncertainty: string | null;
   sortOrder: number;
   categories: string[];
+  dependencies: WaypointDependency[];
   createdAt: string;
   updatedAt: string;
 };

@@ -8,6 +8,11 @@ import {
   setQuestTerritories,
   deleteQuestTerritoriesByQuestId,
 } from './quest-territories.repo';
+import {
+  findAttachmentsByQuestId,
+  findAttachmentsByQuestIds,
+  deleteAttachmentsByQuestId,
+} from './quest-attachments.repo';
 
 type QuestRow = RowDataPacket & {
   id: string;
@@ -15,17 +20,24 @@ type QuestRow = RowDataPacket & {
   title: string;
   description: string | null;
   status: QuestStatus;
+  has_ui_change: boolean;
+  has_schema_change: boolean;
   created_at: Date;
   updated_at: Date;
 };
 
-const toQuest = (row: QuestRow, territoryIds: string[] = []): Quest => ({
+const toQuest = (
+  row: QuestRow,
+  extra: { territoryIds?: string[] } = {}
+): Omit<Quest, 'attachments'> => ({
   id: row.id,
   jiraIssueKey: row.jira_issue_key,
   title: row.title,
   description: row.description,
   status: row.status,
-  territoryIds,
+  hasUiChange: !!row.has_ui_change,
+  hasSchemaChange: !!row.has_schema_change,
+  territoryIds: extra.territoryIds ?? [],
   createdAt: row.created_at.toISOString(),
   updatedAt: row.updated_at.toISOString(),
 });
@@ -35,8 +47,16 @@ export const findAllQuests = async (): Promise<Quest[]> => {
     'SELECT * FROM quests ORDER BY created_at DESC'
   );
   const ids = rows.map((r) => r.id);
-  const territoriesMap = await findTerritoryIdsByQuestIds(ids);
-  return rows.map((row) => toQuest(row, territoriesMap.get(row.id) ?? []));
+  const [territoriesMap, attachmentsMap] = await Promise.all([
+    findTerritoryIdsByQuestIds(ids),
+    findAttachmentsByQuestIds(ids),
+  ]);
+  return rows.map((row) => ({
+    ...toQuest(row, {
+      territoryIds: territoriesMap.get(row.id) ?? [],
+    }),
+    attachments: attachmentsMap.get(row.id) ?? [],
+  }));
 };
 
 export const findQuestById = async (id: string): Promise<Quest | undefined> => {
@@ -47,20 +67,35 @@ export const findQuestById = async (id: string): Promise<Quest | undefined> => {
   const row = rows[0];
   if (!row) return undefined;
 
-  const territoryIds = await findTerritoryIdsByQuestId(id);
-  return toQuest(row, territoryIds);
+  const [territoryIds, attachments] = await Promise.all([
+    findTerritoryIdsByQuestId(id),
+    findAttachmentsByQuestId(id),
+  ]);
+  return {
+    ...toQuest(row, { territoryIds }),
+    attachments,
+  };
 };
 
 export const insertQuest = async (data: {
   title: string;
   description?: string;
   territoryIds?: string[];
+  hasUiChange?: boolean;
+  hasSchemaChange?: boolean;
 }): Promise<Quest> => {
   const id = randomUUID();
 
   await pool.query(
-    'INSERT INTO quests (id, title, description, status) VALUES (?, ?, ?, ?)',
-    [id, data.title, data.description ?? null, 'draft']
+    'INSERT INTO quests (id, title, description, status, has_ui_change, has_schema_change) VALUES (?, ?, ?, ?, ?, ?)',
+    [
+      id,
+      data.title,
+      data.description ?? null,
+      'draft',
+      data.hasUiChange ?? false,
+      data.hasSchemaChange ?? false,
+    ]
   );
 
   if (data.territoryIds && data.territoryIds.length > 0) {
@@ -73,7 +108,10 @@ export const insertQuest = async (data: {
 };
 
 export const deleteQuest = async (id: string): Promise<boolean> => {
-  await deleteQuestTerritoriesByQuestId(id);
+  await Promise.all([
+    deleteQuestTerritoriesByQuestId(id),
+    deleteAttachmentsByQuestId(id),
+  ]);
   const [result] = await pool.query<ResultSetHeader>(
     'DELETE FROM quests WHERE id = ?',
     [id]
