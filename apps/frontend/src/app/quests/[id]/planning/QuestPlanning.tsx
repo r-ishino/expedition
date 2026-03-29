@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, useCallback, type ReactNode } from 'react';
 import type { Quest, Waypoint } from '@expedition/shared';
 import { PollingTrigger } from '~/components/PollingTrigger';
 import { useQuests } from '~/hooks/api/useQuests';
 import { apiClient } from '~/lib/apiClient';
+import type { WaypointUpdateData } from './WaypointEditModal';
 import { QuestInfoPane } from './QuestInfoPane';
 import { WaypointListPane } from './WaypointListPane';
 import { WorkspacePane, type WorkspacePaneHandle } from './WorkspacePane';
@@ -45,6 +46,16 @@ export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
     setManualDecomposing(false);
   };
 
+  const handleUpdateWaypoint = useCallback(
+    (waypointId: string, data: WaypointUpdateData): void => {
+      apiClient
+        .put(`/api/quests/${questId}/waypoints/${waypointId}`, data)
+        .then(() => mutate())
+        .catch(() => {});
+    },
+    [questId, mutate]
+  );
+
   if (!quest) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -82,6 +93,7 @@ export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
           <WaypointListPane
             decomposing={decomposing}
             onRequestDecompose={handleDecompose}
+            onUpdateWaypoint={handleUpdateWaypoint}
             questId={questId}
             waypoints={quest.waypoints}
           />

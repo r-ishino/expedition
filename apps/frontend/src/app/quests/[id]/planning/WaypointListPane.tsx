@@ -11,6 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
+import {
+  WaypointEditModal,
+  type WaypointUpdateData,
+} from './WaypointEditModal';
 
 const statusLabel: Record<WaypointStatus, string> = {
   pending: '検討中',
@@ -57,15 +61,26 @@ const WaypointCard = ({
   waypoint,
   step,
   isLast,
+  onClick,
 }: {
   waypoint: Waypoint;
   step: number;
   isLast: boolean;
+  onClick: () => void;
 }): ReactNode => {
   const isApproved = waypoint.status === 'approved';
 
   return (
-    <div className="relative flex border-b border-zinc-200">
+    <div className="relative flex border-b border-zinc-200 transition-all hover:bg-zinc-100 hover:shadow-sm">
+      {/* Accessible click target covering the entire card */}
+      <button
+        className="absolute inset-0 z-10 cursor-pointer"
+        onClick={onClick}
+        type="button"
+      >
+        <span className="sr-only">{waypoint.title} を編集</span>
+      </button>
+
       {/* Timeline column */}
       <div className="flex w-14 shrink-0 flex-col items-center pt-5">
         <StepCircle isApproved={isApproved} step={step} />
@@ -135,15 +150,18 @@ const WaypointCard = ({
 export const WaypointListPane = ({
   waypoints,
   onRequestDecompose,
+  onUpdateWaypoint,
   decomposing,
 }: {
   questId: string;
   waypoints: Waypoint[];
   onRequestDecompose: () => Promise<void>;
+  onUpdateWaypoint: (id: string, data: WaypointUpdateData) => void;
   decomposing: boolean;
 }): ReactNode => {
   const pendingCount = waypoints.filter((w) => w.status === 'pending').length;
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editingWaypoint, setEditingWaypoint] = useState<Waypoint | null>(null);
 
   const handleRetry = (): void => {
     setConfirmOpen(false);
@@ -215,6 +233,7 @@ export const WaypointListPane = ({
               <WaypointCard
                 isLast={i === waypoints.length - 1}
                 key={wp.id}
+                onClick={() => setEditingWaypoint(wp)}
                 step={i + 1}
                 waypoint={wp}
               />
@@ -269,6 +288,15 @@ export const WaypointListPane = ({
             確定して作業に進む
           </button>
         </div>
+      )}
+
+      {/* Edit modal */}
+      {editingWaypoint && (
+        <WaypointEditModal
+          onClose={() => setEditingWaypoint(null)}
+          onSave={onUpdateWaypoint}
+          waypoint={editingWaypoint}
+        />
       )}
     </div>
   );
