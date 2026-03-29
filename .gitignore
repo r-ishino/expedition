@@ -44,6 +44,7 @@ yarn-error.log*
 
 # claude
 CLAUDE.md
+.claude/skills/vibe-kanban/
 
 # worktrees (PoC-3)
 .worktrees/
