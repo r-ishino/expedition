@@ -1,26 +1,24 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { StreamBlock } from '~/hooks/useStreamBlocks';
-import { ThinkingBlock } from './ThinkingBlock';
 import { TextBlock } from './TextBlock';
-import { ToolUseBlock } from './ToolUseBlock';
-import { ToolResultBlock } from './ToolResultBlock';
-import { AggregatedToolGroup } from './AggregatedToolGroup';
+import { WorkGroup } from './WorkGroup';
 
 /**
- * 表示単位: 単一ブロックまたは集約グループ
+ * 表示単位: テキストブロックまたは作業グループ
  */
 type DisplayUnit =
-  | { kind: 'block'; block: StreamBlock }
-  | { kind: 'group'; toolName: string; blocks: StreamBlock[] };
+  | { kind: 'text'; block: StreamBlock }
+  | { kind: 'work'; blocks: StreamBlock[] };
 
 /**
- * blocks を走査して連続する同種 tool_use/tool_result をグループ化する。
- * - 同じ toolName の tool_use が2つ以上連続する場合に集約
- * - 間に text/thinking が挟まったら別グループ
- * - tool_result は直前の tool_use とペアとして扱う
- * - ストリーミング中の最後のブロックは集約せず個別表示
+ * text ブロックはそのまま表示し、
+ * それ以外（thinking, tool_use, tool_result）は連続するかぎり
+ * 1つの作業グループにまとめる。
+ *
+ * ストリーミング中の最後の作業ブロックが未完了の場合は
+ * グループから分離して個別表示する。
  */
 const groupBlocks = (
   blocks: StreamBlock[],
@@ -32,105 +30,44 @@ const groupBlocks = (
   while (i < blocks.length) {
     const block = blocks[i];
 
-    // tool_use ブロックの場合、連続する同種をグループ化
-    if (block.blockType === 'tool_use' && block.toolName) {
-      const toolName = block.toolName;
-      const groupBlocks: StreamBlock[] = [];
+    if (block.blockType === 'text') {
+      units.push({ kind: 'text', block });
+      i++;
+      continue;
+    }
 
-      // 連続する同種 tool_use + tool_result を収集
-      while (i < blocks.length) {
-        const current = blocks[i];
-
-        if (current.blockType === 'tool_use' && current.toolName === toolName) {
-          groupBlocks.push(current);
-          i++;
-          // 直後の tool_result もペアとして収集
-          if (i < blocks.length && blocks[i].blockType === 'tool_result') {
-            groupBlocks.push(blocks[i]);
-            i++;
-          }
-        } else {
-          break;
-        }
-      }
-
-      // ストリーミング中かつグループの最後のブロックが未完了なら、
-      // 最後のペア（tool_use + 可能な tool_result）を分離
-      const toolUseCount = groupBlocks.filter(
-        (b) => b.blockType === 'tool_use'
-      ).length;
-
-      if (streaming && toolUseCount >= 2) {
-        const lastToolUseIdx = groupBlocks.findLastIndex(
-          (b) => b.blockType === 'tool_use'
-        );
-        const lastBlock = groupBlocks[groupBlocks.length - 1];
-
-        if (!lastBlock.completed) {
-          // 最後のペアを分離
-          const mainGroup = groupBlocks.slice(0, lastToolUseIdx);
-          const tail = groupBlocks.slice(lastToolUseIdx);
-
-          if (mainGroup.length >= 3) {
-            // tool_use が2つ以上残る場合のみグループ化
-            const mainToolName =
-              mainGroup.find((b) => b.blockType === 'tool_use')?.toolName ??
-              toolName;
-            units.push({
-              kind: 'group',
-              toolName: mainToolName,
-              blocks: mainGroup,
-            });
-          } else {
-            for (const b of mainGroup) {
-              units.push({ kind: 'block', block: b });
-            }
-          }
-          for (const b of tail) {
-            units.push({ kind: 'block', block: b });
-          }
-          continue;
-        }
-      }
-
-      if (toolUseCount >= 2) {
-        units.push({ kind: 'group', toolName, blocks: groupBlocks });
-      } else {
-        for (const b of groupBlocks) {
-          units.push({ kind: 'block', block: b });
-        }
-      }
-    } else {
-      units.push({ kind: 'block', block: block });
+    // text 以外を連続収集
+    const workBlocks: StreamBlock[] = [];
+    while (i < blocks.length && blocks[i].blockType !== 'text') {
+      workBlocks.push(blocks[i]);
       i++;
     }
+
+    // ストリーミング中は最後の未完了ブロックを分離して
+    // リアルタイム表示する
+    if (streaming && workBlocks.length >= 2) {
+      const last = workBlocks[workBlocks.length - 1];
+      if (!last.completed) {
+        const main = workBlocks.slice(0, -1);
+        if (main.length > 0) {
+          units.push({ kind: 'work', blocks: main });
+        }
+        units.push({ kind: 'work', blocks: [last] });
+        continue;
+      }
+    }
+
+    units.push({ kind: 'work', blocks: workBlocks });
   }
 
   return units;
 };
 
-const BlockRenderer = ({ block }: { block: StreamBlock }): ReactNode => {
-  switch (block.blockType) {
-    case 'thinking':
-      return <ThinkingBlock block={block} />;
-    case 'text':
-      return <TextBlock block={block} />;
-    case 'tool_use':
-      return <ToolUseBlock block={block} />;
-    case 'tool_result':
-      return <ToolResultBlock block={block} />;
-    default:
-      return null;
-  }
-};
-
 const UnitRenderer = ({ unit }: { unit: DisplayUnit }): ReactNode => {
-  if (unit.kind === 'group') {
-    return (
-      <AggregatedToolGroup blocks={unit.blocks} toolName={unit.toolName} />
-    );
+  if (unit.kind === 'text') {
+    return <TextBlock block={unit.block} />;
   }
-  return <BlockRenderer block={unit.block} />;
+  return <WorkGroup blocks={unit.blocks} />;
 };
 
 export const StreamOutput = ({
@@ -140,28 +77,18 @@ export const StreamOutput = ({
   blocks: StreamBlock[];
   streaming: boolean;
 }): ReactNode => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const units = groupBlocks(blocks, streaming);
-
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
-  }, [blocks]);
 
   if (blocks.length === 0 && !streaming) return null;
 
   return (
-    <div
-      className="flex max-h-[600px] flex-col gap-2 overflow-y-auto"
-      ref={containerRef}
-    >
+    <div className="flex flex-col gap-2">
       {units.map((unit, i) => (
         <UnitRenderer
           key={
-            unit.kind === 'group'
-              ? `group-${unit.toolName}-${String(i)}`
-              : `${String(unit.block.index)}-${String(i)}`
+            unit.kind === 'text'
+              ? `text-${String(unit.block.index)}-${String(i)}`
+              : `work-${String(i)}`
           }
           unit={unit}
         />

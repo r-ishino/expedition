@@ -2,28 +2,56 @@
 
 import { useState, type ReactNode } from 'react';
 import type { StreamBlock } from '~/hooks/useStreamBlocks';
-import { ToolStatusDot, worstStatus } from './ToolStatusDot';
+import { ThinkingBlock } from './ThinkingBlock';
 import { ToolUseBlock } from './ToolUseBlock';
 import { ToolResultBlock } from './ToolResultBlock';
+import { ToolStatusDot, worstStatus } from './ToolStatusDot';
 
 const BlockRenderer = ({ block }: { block: StreamBlock }): ReactNode => {
-  if (block.blockType === 'tool_use') return <ToolUseBlock block={block} />;
-  if (block.blockType === 'tool_result')
-    return <ToolResultBlock block={block} />;
-  return null;
+  switch (block.blockType) {
+    case 'thinking':
+      return <ThinkingBlock block={block} />;
+    case 'tool_use':
+      return <ToolUseBlock block={block} />;
+    case 'tool_result':
+      return <ToolResultBlock block={block} />;
+    default:
+      return null;
+  }
 };
 
-export const AggregatedToolGroup = ({
-  toolName,
-  blocks,
-}: {
-  toolName: string;
-  blocks: StreamBlock[];
-}): ReactNode => {
+/**
+ * 作業ブロックのサマリーラベルを生成する。
+ * 例: "Read · 3, Bash · 1, Thinking · 2"
+ */
+const buildSummary = (blocks: StreamBlock[]): string => {
+  const counts = new Map<string, number>();
+
+  for (const block of blocks) {
+    if (block.blockType === 'tool_result') continue;
+    const label =
+      block.blockType === 'thinking' ? 'Thinking' : (block.toolName ?? 'Tool');
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([name, count]) => (count > 1 ? `${name} × ${String(count)}` : name))
+    .join(', ');
+};
+
+/**
+ * text 以外のブロック群を1つの折りたたみにまとめる。
+ * 1ブロックのみの場合はそのまま表示する。
+ */
+export const WorkGroup = ({ blocks }: { blocks: StreamBlock[] }): ReactNode => {
   const [expanded, setExpanded] = useState(false);
-  const toolUseBlocks = blocks.filter((b) => b.blockType === 'tool_use');
-  const count = toolUseBlocks.length;
   const worst = worstStatus(blocks);
+  const summary = buildSummary(blocks);
+
+  // 1ブロックだけなら折りたたみ不要
+  if (blocks.length === 1) {
+    return <BlockRenderer block={blocks[0]} />;
+  }
 
   return (
     <div className="rounded-md border border-zinc-200 dark:border-zinc-700">
@@ -45,9 +73,8 @@ export const AggregatedToolGroup = ({
             strokeWidth={2}
           />
         </svg>
-        <span className="font-mono">{toolName}</span>
-        <span className="text-zinc-400 dark:text-zinc-500">
-          · {String(count)}回
+        <span className="truncate text-zinc-400 dark:text-zinc-500">
+          {summary}
         </span>
         <ToolStatusDot completed={worst.completed} status={worst.status} />
       </button>
