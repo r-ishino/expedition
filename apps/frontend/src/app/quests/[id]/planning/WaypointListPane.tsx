@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import type { Waypoint, WaypointStatus } from '@expedition/shared';
+import type {
+  Waypoint,
+  WaypointDependency,
+  WaypointDependencyType,
+  WaypointStatus,
+} from '@expedition/shared';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -35,6 +40,131 @@ const categoryColor: Record<string, { bg: string; text: string }> = {
 const defaultCategoryColor = {
   bg: 'bg-zinc-100',
   text: 'text-zinc-600',
+};
+
+const dependencyTypeStyle: Record<
+  WaypointDependencyType,
+  { color: string; bg: string; icon: ReactNode }
+> = {
+  data_migration: {
+    color: '#8B5CF6',
+    bg: '#F5F3FF',
+    icon: (
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        viewBox="0 0 24 24"
+      >
+        <ellipse cx="12" cy="5" rx="9" ry="3" />
+        <path d="M3 5v14a9 3 0 0 0 18 0V5" />
+        <path d="M3 12a9 3 0 0 0 18 0" />
+      </svg>
+    ),
+  },
+  deployment: {
+    color: '#2563EB',
+    bg: '#EFF6FF',
+    icon: (
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        viewBox="0 0 24 24"
+      >
+        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+        <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+        <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+        <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+      </svg>
+    ),
+  },
+  test: {
+    color: '#059669',
+    bg: '#ECFDF5',
+    icon: (
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        viewBox="0 0 24 24"
+      >
+        <path d="M9 2v6l-2 4v6a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-6l-2-4V2" />
+        <path d="M7 2h10" />
+        <path d="M12 14a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" />
+      </svg>
+    ),
+  },
+  manual: {
+    color: '#D97706',
+    bg: '#FFFBEB',
+    icon: (
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        viewBox="0 0 24 24"
+      >
+        <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
+        <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" />
+        <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" />
+        <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+      </svg>
+    ),
+  },
+  review: {
+    color: '#7C3AED',
+    bg: '#F5F3FF',
+    icon: (
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        viewBox="0 0 24 24"
+      >
+        <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    ),
+  },
+};
+
+const DependencyIndicator = ({
+  dependency,
+}: {
+  dependency: WaypointDependency;
+}): ReactNode => {
+  const style =
+    dependency.type && dependency.type in dependencyTypeStyle
+      ? dependencyTypeStyle[dependency.type]
+      : null;
+
+  if (!style || !dependency.label) return null;
+
+  return (
+    <div
+      className="flex items-center gap-2 py-2 pl-14 pr-5"
+      style={{ backgroundColor: style.bg, color: style.color }}
+    >
+      {style.icon}
+      <span className="text-xs font-medium">{dependency.label}</span>
+    </div>
+  );
 };
 
 const StepCircle = ({
@@ -235,15 +365,25 @@ export const WaypointListPane = (): ReactNode => {
       <div className="min-h-0 flex-1 overflow-y-auto">
         {waypoints.length > 0 ? (
           <div className="flex flex-col">
-            {waypoints.map((wp, i) => (
-              <WaypointCard
-                isLast={i === waypoints.length - 1}
-                key={wp.id}
-                onClick={() => setEditingWaypoint(wp)}
-                step={i + 1}
-                waypoint={wp}
-              />
-            ))}
+            {waypoints.map((wp, i) => {
+              // このwaypointから次のwaypointへの依存関係を探す
+              const nextWp = waypoints[i + 1];
+              const depToNext = nextWp
+                ? wp.dependencies.find((d) => d.toWaypointId === nextWp.id)
+                : undefined;
+
+              return (
+                <div key={wp.id}>
+                  <WaypointCard
+                    isLast={i === waypoints.length - 1 && !depToNext}
+                    onClick={() => setEditingWaypoint(wp)}
+                    step={i + 1}
+                    waypoint={wp}
+                  />
+                  {depToNext && <DependencyIndicator dependency={depToNext} />}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-4 px-8">
