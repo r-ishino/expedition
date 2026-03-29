@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, type ReactNode } from 'react';
+import { Button } from '~/components/ui/button';
 import { StreamOutput } from '~/components/stream/StreamOutput';
 import {
   usePlanningSessionContext,
@@ -63,7 +64,7 @@ export const WorkspacePane = (): ReactNode => {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-zinc-200 px-5">
+      <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-zinc-200 bg-zinc-50 px-5">
         <div className="flex items-center gap-2.5">
           <span className="font-mono text-[11px] font-bold text-zinc-950">
             &gt;_
@@ -76,6 +77,13 @@ export const WorkspacePane = (): ReactNode => {
             中継地点を決めるための対話
           </span>
         </div>
+      </div>
+
+      {/* Sub header */}
+      <div className="flex h-10 shrink-0 items-center justify-end border-b border-zinc-200 px-5">
+        <Button size="xs" variant="outline">
+          初期化
+        </Button>
       </div>
 
       {/* Stream area */}

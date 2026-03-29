@@ -190,7 +190,7 @@ export const WaypointListPane = (): ReactNode => {
       </Dialog>
 
       {/* Header */}
-      <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-zinc-200 px-5">
+      <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-zinc-200 bg-zinc-50 px-5">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-zinc-950">中継地点</span>
           <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-800">
@@ -201,8 +201,8 @@ export const WaypointListPane = (): ReactNode => {
           <Button
             disabled={decomposing}
             onClick={() => setConfirmOpen(true)}
-            size="sm"
-            variant="ghost"
+            size="xs"
+            variant="outline"
           >
             {decomposing ? (
               <>
