@@ -80,6 +80,14 @@ export const findQuestPlanningMessagesByQuestId = async (
   return rows.map(toMessage);
 };
 
+export const deleteQuestPlanningMessagesByQuestId = async (
+  questId: string
+): Promise<void> => {
+  await pool.query('DELETE FROM quest_planning_messages WHERE quest_id = ?', [
+    questId,
+  ]);
+};
+
 export const countQuestPlanningMessages = async (
   questId: string
 ): Promise<number> => {

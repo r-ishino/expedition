@@ -1,7 +1,15 @@
 'use client';
 
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog';
 import { StreamOutput } from '~/components/stream/StreamOutput';
 import {
   usePlanningSessionContext,
@@ -47,9 +55,16 @@ export const WorkspacePane = (): ReactNode => {
     setInstruction,
     cancelJob,
     sendInstruction,
+    resetSession,
   } = usePlanningSessionContext();
 
   const streamAreaRef = useRef<HTMLDivElement | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const handleReset = (): void => {
+    setConfirmOpen(false);
+    resetSession().catch(() => {});
+  };
 
   const scrollToBottom = (): void => {
     if (streamAreaRef.current) {
@@ -63,6 +78,34 @@ export const WorkspacePane = (): ReactNode => {
 
   return (
     <div className="flex h-full flex-col">
+      {/* Confirm dialog */}
+      <Dialog onOpenChange={setConfirmOpen} open={confirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>やり取りを初期化しますか？</DialogTitle>
+            <DialogDescription>
+              すべてのメッセージ履歴が削除されます。この操作は取り消せません。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setConfirmOpen(false)}
+              size="sm"
+              variant="ghost"
+            >
+              キャンセル
+            </Button>
+            <Button
+              className="bg-zinc-900 text-white hover:bg-zinc-800"
+              onClick={handleReset}
+              size="sm"
+            >
+              初期化する
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-zinc-200 bg-zinc-50 px-5">
         <div className="flex items-center gap-2.5">
@@ -81,7 +124,11 @@ export const WorkspacePane = (): ReactNode => {
 
       {/* Sub header */}
       <div className="flex h-10 shrink-0 items-center justify-end border-b border-zinc-200 px-5">
-        <Button size="xs" variant="outline">
+        <Button
+          onClick={() => setConfirmOpen(true)}
+          size="xs"
+          variant="outline"
+        >
           初期化
         </Button>
       </div>
