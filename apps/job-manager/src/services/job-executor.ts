@@ -8,8 +8,10 @@ import {
 } from '~/repos/quest-planning-jobs.repo';
 import {
   countQuestPlanningMessages,
+  findQuestPlanningMessagesByQuestId,
   insertQuestPlanningMessage,
 } from '~/repos/quest-planning-messages.repo';
+import { findWaypointsByQuestId } from '~/repos/waypoints.repo';
 import { getHandler } from './job-handlers';
 import type { RepoInfo } from './job-handlers/types';
 
@@ -27,7 +29,12 @@ export const executeJob = async (
     .filter((t): t is NonNullable<typeof t> => t !== undefined)
     .map((t) => ({ name: t.name, path: t.path }));
 
-  const context = { quest, instruction, repos };
+  const [waypoints, planningMessages] = await Promise.all([
+    findWaypointsByQuestId(quest.id),
+    findQuestPlanningMessagesByQuestId(quest.id),
+  ]);
+
+  const context = { quest, instruction, repos, waypoints, planningMessages };
 
   if (jobType === 'decompose') {
     await updateQuestStatus(quest.id, 'decomposing');
