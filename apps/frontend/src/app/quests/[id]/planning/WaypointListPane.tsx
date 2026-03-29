@@ -11,10 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
-import {
-  WaypointEditModal,
-  type WaypointUpdateData,
-} from './WaypointEditModal';
+import { usePlanningSessionContext } from './PlanningSessionProvider';
+import { WaypointEditModal } from './WaypointEditModal';
 
 const statusLabel: Record<WaypointStatus, string> = {
   pending: '検討中',
@@ -147,25 +145,18 @@ const WaypointCard = ({
   );
 };
 
-export const WaypointListPane = ({
-  waypoints,
-  onRequestDecompose,
-  onUpdateWaypoint,
-  decomposing,
-}: {
-  questId: string;
-  waypoints: Waypoint[];
-  onRequestDecompose: () => Promise<void>;
-  onUpdateWaypoint: (id: string, data: WaypointUpdateData) => void;
-  decomposing: boolean;
-}): ReactNode => {
+export const WaypointListPane = (): ReactNode => {
+  const { quest, decomposing, startDecompose, updateWaypoint } =
+    usePlanningSessionContext();
+
+  const waypoints = quest?.waypoints ?? [];
   const pendingCount = waypoints.filter((w) => w.status === 'pending').length;
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editingWaypoint, setEditingWaypoint] = useState<Waypoint | null>(null);
 
   const handleRetry = (): void => {
     setConfirmOpen(false);
-    onRequestDecompose().catch(() => {});
+    startDecompose().catch(() => {});
   };
 
   return (
@@ -256,7 +247,7 @@ export const WaypointListPane = ({
               className="bg-zinc-900 text-white hover:bg-zinc-800"
               disabled={decomposing}
               onClick={() => {
-                onRequestDecompose().catch(() => {});
+                startDecompose().catch(() => {});
               }}
             >
               {decomposing ? (
@@ -294,7 +285,7 @@ export const WaypointListPane = ({
       {editingWaypoint && (
         <WaypointEditModal
           onClose={() => setEditingWaypoint(null)}
-          onSave={onUpdateWaypoint}
+          onSave={updateWaypoint}
           waypoint={editingWaypoint}
         />
       )}

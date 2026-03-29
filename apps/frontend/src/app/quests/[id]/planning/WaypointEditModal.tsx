@@ -42,9 +42,7 @@ export const WaypointEditModal = ({
   const [description, setDescription] = useState(waypoint.description ?? '');
   const [estimate, setEstimate] = useState(waypoint.estimate ?? '');
   const [uncertainty, setUncertainty] = useState(waypoint.uncertainty ?? '');
-  const [categories, setCategories] = useState(
-    waypoint.categories.join(', ')
-  );
+  const [categories, setCategories] = useState(waypoint.categories.join(', '));
   const [status, setStatus] = useState<WaypointStatus>(waypoint.status);
 
   const handleSave = (): void => {
@@ -111,9 +109,16 @@ export const WaypointEditModal = ({
               </span>
               <select
                 className={inputClass}
-                onChange={(e) =>
-                  setStatus(e.target.value as WaypointStatus)
-                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (
+                    val === 'pending' ||
+                    val === 'reviewing' ||
+                    val === 'approved'
+                  ) {
+                    setStatus(val);
+                  }
+                }}
                 value={status}
               >
                 {statusOptions.map((opt) => (

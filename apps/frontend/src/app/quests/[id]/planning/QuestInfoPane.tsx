@@ -14,6 +14,7 @@ import {
 } from '~/components/ui/dialog';
 import { Button } from '~/components/ui/button';
 import { apiClient } from '~/lib/apiClient';
+import { usePlanningSessionContext } from './PlanningSessionProvider';
 
 type QuestWithWaypoints = Quest & { waypoints: Waypoint[] };
 
@@ -285,15 +286,12 @@ const TerritorySelector = ({
   );
 };
 
-export const QuestInfoPane = ({
-  quest,
-  onUpdated,
-}: {
-  quest: QuestWithWaypoints;
-  onUpdated: () => void;
-}): ReactNode => {
+export const QuestInfoPane = (): ReactNode => {
+  const { quest, mutateQuest } = usePlanningSessionContext();
   const { data: territories = [] } = useTerritories().useIndex();
   const [showTerritoryModal, setShowTerritoryModal] = useState(false);
+
+  if (!quest) return null;
 
   const handleSaveHeader = async (
     title: string,
@@ -303,19 +301,19 @@ export const QuestInfoPane = ({
       title,
       description: description || undefined,
     });
-    onUpdated();
+    mutateQuest();
   };
 
   const handleRemoveTerritory = async (territoryId: string): Promise<void> => {
     const newIds = quest.territoryIds.filter((id) => id !== territoryId);
     await updateQuestApi(quest.id, { territoryIds: newIds });
-    onUpdated();
+    mutateQuest();
   };
 
   const handleAddTerritories = async (ids: string[]): Promise<void> => {
     const merged = [...new Set([...quest.territoryIds, ...ids])];
     await updateQuestApi(quest.id, { territoryIds: merged });
-    onUpdated();
+    mutateQuest();
   };
 
   const territoryItems = quest.territoryIds.map((id) => {
