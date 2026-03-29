@@ -20,6 +20,9 @@ const jobEmitters = new Map<string, EventEmitter>();
 // ジョブごとのストリームイベント履歴（リロード時の復元用）
 const jobEventHistory = new Map<string, JobStreamEvent[]>();
 
+// ジョブごとのプロセス参照（キャンセル用）
+const jobProcesses = new Map<string, ReturnType<typeof spawn>>();
+
 export const getJobEventHistory = (id: string): JobStreamEvent[] | undefined =>
   jobEventHistory.get(id);
 
@@ -253,6 +256,8 @@ const startJob = async (job: JobResponse): Promise<void> => {
     }
   );
 
+  jobProcesses.set(id, proc);
+
   // タイムアウト: 設定時間を超えたらプロセスを強制終了
   const timeoutMs = config.jobs.timeoutMs;
   let timedOut = false;
@@ -298,6 +303,8 @@ const startJob = async (job: JobResponse): Promise<void> => {
   });
 
   const cleanup = (): void => {
+    jobProcesses.delete(id);
+
     // しばらくしてからクリーンアップ（遅延接続に対応）
     setTimeout(() => {
       emitter.removeAllListeners();
@@ -335,7 +342,10 @@ const startJob = async (job: JobResponse): Promise<void> => {
     }
 
     job.exitCode = code;
-    job.status = code === 0 && !timedOut ? 'completed' : 'failed';
+    // cancelled は cancelJob で設定済みなので上書きしない
+    if (job.status !== 'cancelled') {
+      job.status = code === 0 && !timedOut ? 'completed' : 'failed';
+    }
     job.completedAt = new Date().toISOString();
 
     // handleStreamJson で result イベントを受信済みなら done は発行済み
@@ -414,6 +424,52 @@ const drainQueue = (): void => {
 
 // ジョブ完了時にキューを排出
 scheduler.on('job-completed', drainQueue);
+
+/** ジョブをキャンセルする（プロセスを SIGTERM → SIGKILL で終了） */
+export const cancelJob = (id: string): boolean => {
+  const job = jobs.get(id);
+  if (!job) return false;
+  if (job.status !== 'running' && job.status !== 'queued') return false;
+
+  // キューに入っているだけの場合はキューから除去
+  const queueIdx = jobQueue.indexOf(id);
+  if (queueIdx !== -1) {
+    jobQueue.splice(queueIdx, 1);
+    job.status = 'cancelled';
+    job.completedAt = new Date().toISOString();
+
+    const emitter = jobEmitters.get(id);
+    if (emitter) {
+      const doneEvent: JobStreamEvent = {
+        type: 'done',
+        status: 'cancelled',
+        exitCode: null,
+        durationMs: null,
+        costUsd: null,
+      };
+      emitAndPersist(id, emitter, doneEvent);
+      emitter.emit('end');
+    }
+    return true;
+  }
+
+  // 実行中のプロセスを kill
+  const proc = jobProcesses.get(id);
+  if (!proc) return false;
+
+  // close イベントで status が cancelled になるようフラグを立てる
+  job.status = 'cancelled';
+  proc.kill('SIGTERM');
+
+  // SIGTERM で終了しない場合に備えて SIGKILL
+  setTimeout(() => {
+    if (!proc.killed) {
+      proc.kill('SIGKILL');
+    }
+  }, 5_000);
+
+  return true;
+};
 
 export const runClaude = async (
   options: RunClaudeOptions

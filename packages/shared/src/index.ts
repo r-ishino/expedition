@@ -22,7 +22,12 @@ export type TerritoryRequest = {
   path: string;
 };
 
-export type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
+export type JobStatus =
+  | 'queued'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
 
 export type JobResponse = {
   id: string;

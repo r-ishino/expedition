@@ -6,6 +6,7 @@ import {
   insertQuest,
   updateQuest,
   deleteQuest,
+  updateQuestStatus,
 } from '~/repos/quests.repo';
 import {
   findWaypointsByQuestId,
@@ -14,6 +15,7 @@ import {
 import { findQuestPlanningJobsByQuestId } from '~/repos/quest-planning-jobs.repo';
 import { findQuestPlanningMessagesByQuestId } from '~/repos/quest-planning-messages.repo';
 import { executeJob } from '~/services/job-executor';
+import { cancelJob } from '~/services/claude-runner';
 import { app as attachmentsApp } from './attachments';
 import { app as waypointsApp } from './waypoints';
 
@@ -109,6 +111,30 @@ app.post('/:id/jobs', async (c) => {
 
   const { jobId } = await executeJob(body.jobType, quest, body.instruction);
   return c.json({ jobId }, 202);
+});
+
+// POST /api/quests/:id/jobs/:jobId/cancel — ジョブキャンセル
+app.post('/:id/jobs/:jobId/cancel', async (c) => {
+  const id = c.req.param('id');
+  const jobId = c.req.param('jobId');
+
+  const quest = await findQuestById(id);
+  if (!quest) {
+    return c.json({ error: 'quest not found' }, 404);
+  }
+
+  const cancelled = cancelJob(jobId);
+  if (!cancelled) {
+    return c.json({ error: 'job not found or not running' }, 404);
+  }
+
+  // decomposing 中のキャンセルは即座に draft に戻す
+  // （プロセス終了を待たずにフロントエンドが mutate できるように）
+  if (quest.status === 'decomposing') {
+    await updateQuestStatus(id, 'draft');
+  }
+
+  return c.json({ ok: true });
 });
 
 // GET /api/quests/:id/planning-messages — 計画メッセージ一覧

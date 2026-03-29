@@ -80,7 +80,7 @@ export const updateQuestPlanningJobStatus = async (
   const fields = ['status = ?'];
   const values: unknown[] = [status];
 
-  if (status === 'completed' || status === 'failed') {
+  if (status === 'completed' || status === 'failed' || status === 'cancelled') {
     fields.push('completed_at = NOW()');
   }
 

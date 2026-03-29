@@ -90,7 +90,11 @@ export const executeJob = async (
         handler.onComplete(context, completedJob.stdout).catch((err) => {
           console.error(`onComplete failed for job ${job.id}:`, err);
         });
-      } else if (jobType === 'decompose') {
+      } else if (
+        jobType === 'decompose' &&
+        (completedJob.status === 'failed' ||
+          completedJob.status === 'cancelled')
+      ) {
         updateQuestStatus(quest.id, 'draft').catch((err: unknown) => {
           console.error(`Failed to reset quest status for ${quest.id}:`, err);
         });
