@@ -1,4 +1,4 @@
-import type { Quest } from '@expedition/shared';
+import type { Quest, Waypoint, QuestPlanningMessage } from '@expedition/shared';
 
 export type RepoInfo = {
   name: string;
@@ -9,6 +9,8 @@ export type JobContext = {
   quest: Quest;
   instruction?: string;
   repos: RepoInfo[];
+  waypoints: Waypoint[];
+  planningMessages: QuestPlanningMessage[];
 };
 
 export type JobHandler = {
