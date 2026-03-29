@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -71,6 +71,10 @@ export const WorkspacePane = (): ReactNode => {
       streamAreaRef.current.scrollTop = streamAreaRef.current.scrollHeight;
     }
   };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages.length]);
 
   if (streaming) {
     setTimeout(scrollToBottom, 0);
