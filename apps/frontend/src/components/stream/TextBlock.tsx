@@ -14,10 +14,10 @@ export const TextBlock = ({ block }: { block: StreamBlock }): ReactNode => (
   <div
     className={cn(
       'markdown-body text-[13px] leading-relaxed text-zinc-950 dark:text-zinc-100',
-      !block.completed && 'streaming',
+      !block.completed && 'streaming'
     )}
   >
-    <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins}>
+    <ReactMarkdown rehypePlugins={rehypePlugins} remarkPlugins={remarkPlugins}>
       {block.content}
     </ReactMarkdown>
   </div>
