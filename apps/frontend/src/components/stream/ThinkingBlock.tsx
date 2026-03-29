@@ -4,7 +4,21 @@ import { useState, type ReactNode } from 'react';
 import type { StreamBlock } from '~/hooks/useStreamBlocks';
 
 export const ThinkingBlock = ({ block }: { block: StreamBlock }): ReactNode => {
+  const hasContent = block.content.trim().length > 0;
   const [expanded, setExpanded] = useState(!block.completed);
+
+  if (!hasContent) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+        <span>
+          Thinking
+          {!block.completed && (
+            <span className="ml-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-yellow-500" />
+          )}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-md border border-zinc-200 dark:border-zinc-700">

@@ -10,41 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog';
-import { StreamOutput } from '~/components/stream/StreamOutput';
-import {
-  usePlanningSessionContext,
-  type Message,
-} from './PlanningSessionProvider';
-
-const MessageBubble = ({ message }: { message: Message }): ReactNode => {
-  const isUser = message.role === 'user';
-
-  return (
-    <div className="flex gap-3">
-      <div
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-          isUser
-            ? 'bg-zinc-900 text-white'
-            : 'border border-zinc-200 bg-zinc-100 text-zinc-500'
-        }`}
-      >
-        {isUser ? 'U' : 'C'}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className="text-[13px] font-semibold text-zinc-950">
-          {isUser ? 'あなた' : 'Claude'}
-        </span>
-        {isUser && message.text ? (
-          <pre className="whitespace-pre-wrap text-[13px] leading-relaxed text-zinc-950">
-            {message.text}
-          </pre>
-        ) : (
-          <StreamOutput blocks={message.blocks} streaming={false} />
-        )}
-      </div>
-    </div>
-  );
-};
+import { UserMessageBlock } from '~/components/stream/UserMessageBlock';
+import { AssistantMessageBlock } from '~/components/stream/AssistantMessageBlock';
+import { usePlanningSessionContext } from './PlanningSessionProvider';
 
 export const WorkspacePane = (): ReactNode => {
   const {
@@ -146,21 +114,21 @@ export const WorkspacePane = (): ReactNode => {
           </div>
         ) : (
           <>
-            {messages.map((msg, i) => (
-              <MessageBubble key={`${msg.role}-${String(i)}`} message={msg} />
-            ))}
+            {messages.map((msg, i) =>
+              msg.role === 'user' && msg.text ? (
+                <UserMessageBlock
+                  key={`${msg.role}-${String(i)}`}
+                  text={msg.text}
+                />
+              ) : (
+                <AssistantMessageBlock
+                  blocks={msg.blocks}
+                  key={`${msg.role}-${String(i)}`}
+                />
+              )
+            )}
             {streaming && blocks.length > 0 && (
-              <div className="flex gap-3">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-[11px] font-semibold text-zinc-500">
-                  C
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <span className="text-[13px] font-semibold text-zinc-950">
-                    Claude
-                  </span>
-                  <StreamOutput blocks={blocks} streaming={streaming} />
-                </div>
-              </div>
+              <AssistantMessageBlock blocks={blocks} streaming />
             )}
           </>
         )}

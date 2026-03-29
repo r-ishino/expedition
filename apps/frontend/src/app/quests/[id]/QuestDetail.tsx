@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog';
 import { StreamOutput } from '~/components/stream/StreamOutput';
+import { UserMessageBlock } from '~/components/stream/UserMessageBlock';
 import { useQuests } from '~/hooks/api/useQuests';
 import { useStreamBlocks } from '~/hooks/useStreamBlocks';
 import { apiClient } from '~/lib/apiClient';
@@ -187,6 +188,7 @@ const WaypointCard = ({
 export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
   const { data: quest, mutate } = useQuests().useShow(questId);
   const [instruction, setInstruction] = useState('');
+  const [sentInstruction, setSentInstruction] = useState<string | null>(null);
 
   const { blocks, streaming, startStream, reset } = useStreamBlocks({
     onDone: () => {
@@ -198,6 +200,7 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
 
   const decompose = async (): Promise<void> => {
     reset();
+    setSentInstruction(instruction.trim() || null);
 
     try {
       const { jobId } = await apiClient.post<{ jobId: string }>(
@@ -287,15 +290,24 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
         </div>
 
         {(streaming || blocks.length > 0) && (
-          <div className="mb-6">
-            <h2 className="mb-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+          <div className="mb-6 flex flex-col gap-5">
+            <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
               Claude Code 出力
               {streaming && (
                 <span className="ml-2 inline-block h-2 w-2 animate-pulse rounded-full bg-yellow-500" />
               )}
             </h2>
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-950">
-              <StreamOutput blocks={blocks} streaming={streaming} />
+            {sentInstruction && <UserMessageBlock text={sentInstruction} />}
+            <div className="flex gap-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white text-[11px] font-semibold text-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                C
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <span className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">
+                  Claude
+                </span>
+                <StreamOutput blocks={blocks} streaming={streaming} />
+              </div>
             </div>
           </div>
         )}

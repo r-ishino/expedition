@@ -10,6 +10,16 @@ export const ToolResultBlock = ({
   block: StreamBlock;
 }): ReactNode => {
   const [expanded, setExpanded] = useState(false);
+  const hasContent = block.content.trim().length > 0;
+
+  if (!hasContent) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+        <span>Result</span>
+        <ToolStatusDot completed={block.completed} status={block.status} />
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-md border border-zinc-200 dark:border-zinc-700">
@@ -34,7 +44,7 @@ export const ToolResultBlock = ({
         <span>Result</span>
         <ToolStatusDot completed={block.completed} status={block.status} />
       </button>
-      {expanded && block.content && (
+      {expanded && (
         <div className="border-t border-zinc-200 px-3 py-2 dark:border-zinc-700">
           <pre className="max-h-48 overflow-auto whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-400">
             {block.content}
