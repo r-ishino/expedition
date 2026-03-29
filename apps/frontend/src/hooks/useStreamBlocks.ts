@@ -15,6 +15,7 @@ export type StreamBlock = {
   toolName?: string;
   toolUseId?: string;
   completed: boolean;
+  status?: 'success' | 'error';
   turnIndex: number;
 };
 
@@ -125,6 +126,7 @@ export const useStreamBlocks = (options?: {
         updated[targetIdx] = {
           ...updated[targetIdx],
           completed: true,
+          status: data.status,
         };
         return updated;
       });

@@ -69,6 +69,7 @@ export type JobStreamBlockDelta = {
 export type JobStreamBlockStop = {
   type: 'block_stop';
   index: number;
+  status?: 'success' | 'error';
 };
 
 /** ジョブ完了イベント */

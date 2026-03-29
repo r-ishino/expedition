@@ -2,9 +2,12 @@
 
 import { useState, type ReactNode } from 'react';
 import type { StreamBlock } from '~/hooks/useStreamBlocks';
+import { ToolStatusDot } from './ToolStatusDot';
+import { getToolSummary } from './toolSummary';
 
 export const ToolUseBlock = ({ block }: { block: StreamBlock }): ReactNode => {
   const [expanded, setExpanded] = useState(false);
+  const summary = getToolSummary(block.toolName, block.content);
 
   return (
     <div className="rounded-md border border-zinc-200 dark:border-zinc-700">
@@ -26,10 +29,13 @@ export const ToolUseBlock = ({ block }: { block: StreamBlock }): ReactNode => {
             strokeWidth={2}
           />
         </svg>
-        <span className="font-mono">{block.toolName ?? 'Tool'}</span>
-        {!block.completed && (
-          <span className="ml-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />
+        <span className="shrink-0 font-mono">{block.toolName ?? 'Tool'}</span>
+        {summary && (
+          <span className="truncate text-zinc-400 dark:text-zinc-500">
+            {summary}
+          </span>
         )}
+        <ToolStatusDot completed={block.completed} status={block.status} />
       </button>
       {expanded && block.content && (
         <div className="border-t border-zinc-200 px-3 py-2 dark:border-zinc-700">

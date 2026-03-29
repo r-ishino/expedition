@@ -29,6 +29,9 @@ export const getJobEventHistory = (id: string): JobStreamEvent[] | undefined =>
 // handleStreamJson で result イベントを受信済みかどうか（done 二重発火防止）
 const jobReceivedResult = new Map<string, boolean>();
 
+// ブロックごとの is_error フラグ（tool_result の block_start で記録し block_stop で参照）
+const blockIsError = new Map<string, Map<number, boolean>>();
+
 // ジョブごとのオプションを保持（startJob で repoPath を参照するため）
 type RunClaudeOptions = {
   prompt: string;
@@ -139,6 +142,17 @@ const handleStreamJson = (
       const blockType = toBlockType(cbType);
       if (!blockType) return;
 
+      // tool_result の is_error を記録（block_stop で status に反映する）
+      if (blockType === 'tool_result') {
+        const isErr = getBoolean(contentBlock, 'is_error') === true;
+        let jobMap = blockIsError.get(job.id);
+        if (!jobMap) {
+          jobMap = new Map();
+          blockIsError.set(job.id, jobMap);
+        }
+        jobMap.set(index, isErr);
+      }
+
       const startEvent: JobStreamEvent = {
         type: 'block_start',
         index,
@@ -194,11 +208,21 @@ const handleStreamJson = (
 
     // ブロック終了
     if (eventType === 'content_block_stop') {
+      // tool_result の場合は is_error フラグからステータスを決定
+      const jobMap = blockIsError.get(job.id);
+      const isErr = jobMap?.get(index);
+      const status: 'success' | 'error' | undefined =
+        isErr === true ? 'error' : isErr === false ? 'success' : undefined;
+
       const stopEvent: JobStreamEvent = {
         type: 'block_stop',
         index,
+        status,
       };
       emitAndPersist(job.id, emitter, stopEvent);
+
+      // 使い終わったエントリを削除
+      jobMap?.delete(index);
     }
   } else if (type === 'result') {
     const durationMs = getNumber(parsed, 'duration_ms') ?? null;
@@ -360,6 +384,7 @@ const startJob = async (job: JobResponse): Promise<void> => {
       emitAndPersist(id, emitter, doneEvent);
     }
     jobReceivedResult.delete(id);
+    blockIsError.delete(id);
     emitter.emit('end');
 
     cleanup();

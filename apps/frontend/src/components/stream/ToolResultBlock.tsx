@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import type { StreamBlock } from '~/hooks/useStreamBlocks';
+import { ToolStatusDot } from './ToolStatusDot';
 
 export const ToolResultBlock = ({
   block,
@@ -31,6 +32,7 @@ export const ToolResultBlock = ({
           />
         </svg>
         <span>Result</span>
+        <ToolStatusDot completed={block.completed} status={block.status} />
       </button>
       {expanded && block.content && (
         <div className="border-t border-zinc-200 px-3 py-2 dark:border-zinc-700">
