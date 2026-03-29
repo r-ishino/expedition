@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { findQuestById } from '~/repos/quests.repo';
 import {
   findWaypointsByQuestId,
+  insertManyWaypoints,
   updateWaypoint,
   deleteWaypoint,
   deleteWaypointsByQuestId,
@@ -19,6 +20,31 @@ app.get('/:id/waypoints', async (c) => {
 
   const waypoints = await findWaypointsByQuestId(id);
   return c.json(waypoints);
+});
+
+// POST /api/quests/:questId/waypoints — waypoint作成
+app.post('/:questId/waypoints', async (c) => {
+  const questId = Number(c.req.param('questId'));
+  const quest = await findQuestById(questId);
+  if (!quest) {
+    return c.json({ error: 'quest not found' }, 404);
+  }
+
+  const body = await c.req.json<{
+    title: string;
+    description?: string;
+    estimate?: string;
+    uncertainty?: string;
+    categories?: string[];
+  }>();
+
+  if (!body.title?.trim()) {
+    return c.json({ error: 'title is required' }, 400);
+  }
+
+  const waypoints = await insertManyWaypoints(questId, [body]);
+  const created = waypoints[waypoints.length - 1];
+  return c.json(created, 201);
 });
 
 // PUT /api/quests/:questId/waypoints/:waypointId — waypoint編集
