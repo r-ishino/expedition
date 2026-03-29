@@ -43,7 +43,12 @@ export const executeJob = async (
   const prompt = handler.buildPrompt(context);
   const cwd = repos[0]?.path;
   const maxBudgetUsd = jobType === 'decompose' ? 0.5 : undefined;
-  const job = await runClaude({ prompt, cwd, maxBudgetUsd });
+  const job = await runClaude({
+    prompt,
+    cwd,
+    maxBudgetUsd,
+    questId: quest.id,
+  });
 
   // DB にジョブレコードを作成（runtimeJobId でストリーム復元可能にする）
   const planningJob = await insertQuestPlanningJob({

@@ -1,6 +1,9 @@
 import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import type {
   JobResponse,
   JobStreamEvent,
@@ -38,6 +41,7 @@ type RunClaudeOptions = {
   repoPath?: string;
   cwd?: string;
   maxBudgetUsd?: number;
+  questId?: number;
 };
 
 const jobOptionsMap = new Map<string, RunClaudeOptions>();
@@ -260,7 +264,32 @@ const startJob = async (job: JobResponse): Promise<void> => {
   const emitter = jobEmitters.get(id) ?? new EventEmitter();
   jobEmitters.set(id, emitter);
 
-  const maxBudgetUsd = jobOptionsMap.get(id)?.maxBudgetUsd;
+  const opts = jobOptionsMap.get(id);
+  const maxBudgetUsd = opts?.maxBudgetUsd;
+
+  // MCP 設定ファイルの生成（questId がある場合）
+  let mcpConfigPath: string | undefined;
+  if (opts?.questId !== undefined) {
+    const mcpServerPath = resolve(
+      __dirname,
+      '../../../../packages/mcp-server/src/index.ts'
+    );
+    const mcpConfig = {
+      mcpServers: {
+        expedition: {
+          type: 'stdio',
+          command: 'npx',
+          args: ['tsx', mcpServerPath],
+          env: {
+            API_BASE_URL: `http://localhost:${config.port}`,
+            QUEST_ID: String(opts.questId),
+          },
+        },
+      },
+    };
+    mcpConfigPath = join(tmpdir(), `expedition-mcp-${id}.json`);
+    writeFileSync(mcpConfigPath, JSON.stringify(mcpConfig));
+  }
 
   const proc = spawn(
     'claude',
@@ -272,11 +301,12 @@ const startJob = async (job: JobResponse): Promise<void> => {
       '--verbose',
       '--include-partial-messages',
       ...(maxBudgetUsd ? ['--max-budget-usd', String(maxBudgetUsd)] : []),
+      ...(mcpConfigPath ? ['--mcp-config', mcpConfigPath] : []),
     ],
     {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env },
-      cwd: job.worktreePath ?? jobOptionsMap.get(id)?.cwd ?? undefined,
+      cwd: job.worktreePath ?? opts?.cwd ?? undefined,
     }
   );
 
@@ -328,6 +358,15 @@ const startJob = async (job: JobResponse): Promise<void> => {
 
   const cleanup = (): void => {
     jobProcesses.delete(id);
+
+    // MCP 設定ファイルの削除
+    if (mcpConfigPath) {
+      try {
+        unlinkSync(mcpConfigPath);
+      } catch {
+        // ignore
+      }
+    }
 
     // しばらくしてからクリーンアップ（遅延接続に対応）
     setTimeout(() => {
