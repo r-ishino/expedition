@@ -4,6 +4,7 @@ import { cors } from 'hono/cors';
 import { config } from './config';
 import { app as healthApp } from './routes/health';
 import { app as jobsApp } from './routes/jobs';
+import { app as jobsBlocksApp } from './routes/jobs.blocks';
 import { app as jobsStreamApp } from './routes/jobs.stream';
 import { app as territoriesApp } from './routes/territories';
 import { app as questsApp } from './routes/quests/index';
@@ -16,6 +17,7 @@ app.use('/*', cors({ origin: config.cors.origin }));
 
 app.route('/health', healthApp);
 app.route('/api/territories', territoriesApp);
+app.route('/api/jobs', jobsBlocksApp);
 app.route('/api/jobs', jobsStreamApp);
 app.route('/api/jobs', jobsApp);
 
