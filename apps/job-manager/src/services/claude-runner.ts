@@ -301,7 +301,9 @@ const startJob = async (job: JobResponse): Promise<void> => {
       '--verbose',
       '--include-partial-messages',
       ...(maxBudgetUsd ? ['--max-budget-usd', String(maxBudgetUsd)] : []),
-      ...(mcpConfigPath ? ['--mcp-config', mcpConfigPath] : []),
+      ...(mcpConfigPath
+        ? ['--mcp-config', mcpConfigPath, '--dangerously-skip-permissions']
+        : []),
     ],
     {
       stdio: ['ignore', 'pipe', 'pipe'],
