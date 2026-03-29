@@ -1,4 +1,5 @@
 import {
+  type AnyMySqlColumn,
   bigint,
   boolean,
   foreignKey,
@@ -84,7 +85,7 @@ export const waypoints = mysqlTable('waypoints', {
   challengeId: bigint('challenge_id', {
     mode: 'number',
     unsigned: true,
-  }).references(() => challenges.id),
+  }).references((): AnyMySqlColumn => challenges.id),
   // 見積もり（例: '~50行'）
   estimate: varchar('estimate', { length: 50 }),
   // 不確定要素の説明
