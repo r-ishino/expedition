@@ -1,5 +1,8 @@
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
-import type { WaypointDependency } from '@expedition/shared';
+import type {
+  WaypointDependency,
+  WaypointDependencyType,
+} from '@expedition/shared';
 import { pool } from '~/db';
 
 type DependencyRow = RowDataPacket & {
@@ -7,6 +10,7 @@ type DependencyRow = RowDataPacket & {
   from_waypoint_id: number;
   to_waypoint_id: number;
   label: string | null;
+  type: WaypointDependencyType | null;
   created_at: Date;
 };
 
@@ -15,6 +19,7 @@ const toDependency = (row: DependencyRow): WaypointDependency => ({
   fromWaypointId: row.from_waypoint_id,
   toWaypointId: row.to_waypoint_id,
   label: row.label,
+  type: row.type,
   createdAt: row.created_at.toISOString(),
 });
 
@@ -43,10 +48,16 @@ export const insertDependency = async (data: {
   fromWaypointId: number;
   toWaypointId: number;
   label?: string;
+  type?: WaypointDependencyType;
 }): Promise<WaypointDependency> => {
   const [result] = await pool.query<ResultSetHeader>(
-    'INSERT INTO waypoint_dependencies (from_waypoint_id, to_waypoint_id, label) VALUES (?, ?, ?)',
-    [data.fromWaypointId, data.toWaypointId, data.label ?? null]
+    'INSERT INTO waypoint_dependencies (from_waypoint_id, to_waypoint_id, label, type) VALUES (?, ?, ?, ?)',
+    [
+      data.fromWaypointId,
+      data.toWaypointId,
+      data.label ?? null,
+      data.type ?? null,
+    ]
   );
 
   const [rows] = await pool.query<DependencyRow[]>(
@@ -61,6 +72,7 @@ export const insertManyDependencies = async (
     fromWaypointId: number;
     toWaypointId: number;
     label?: string;
+    type?: WaypointDependencyType;
   }[]
 ): Promise<void> => {
   if (items.length === 0) return;
@@ -69,12 +81,13 @@ export const insertManyDependencies = async (
     item.fromWaypointId,
     item.toWaypointId,
     item.label ?? null,
+    item.type ?? null,
   ]);
-  const placeholders = values.map(() => '(?, ?, ?)').join(', ');
+  const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ');
   const flat = values.flat();
 
   await pool.query(
-    `INSERT INTO waypoint_dependencies (from_waypoint_id, to_waypoint_id, label) VALUES ${placeholders}`,
+    `INSERT INTO waypoint_dependencies (from_waypoint_id, to_waypoint_id, label, type) VALUES ${placeholders}`,
     flat
   );
 };

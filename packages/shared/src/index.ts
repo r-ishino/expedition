@@ -172,11 +172,19 @@ export type QuestJobRequest = {
 
 export type WaypointStatus = 'pending' | 'approved' | 'reviewing';
 
+export type WaypointDependencyType =
+  | 'data_migration'
+  | 'deployment'
+  | 'test'
+  | 'manual'
+  | 'review';
+
 export type WaypointDependency = {
   id: number;
   fromWaypointId: number;
   toWaypointId: number;
   label: string | null;
+  type: WaypointDependencyType | null;
   createdAt: string;
 };
 

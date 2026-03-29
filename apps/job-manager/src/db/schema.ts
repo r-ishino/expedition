@@ -122,8 +122,10 @@ export const waypointDependencies = mysqlTable('waypoint_dependencies', {
   toWaypointId: bigint('to_waypoint_id', { mode: 'number', unsigned: true })
     .notNull()
     .references(() => waypoints.id),
-  // 依存関係のラベル（例: 'rake db:migrate', 'Deploy backend'）
+  // 依存関係のラベル（例: '過去データの移行', 'Deploy backend'）
   label: varchar('label', { length: 100 }),
+  // 依存関係の種別（例: 'data_migration', 'deployment', 'test', 'manual', 'review'）
+  type: varchar('type', { length: 30 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
