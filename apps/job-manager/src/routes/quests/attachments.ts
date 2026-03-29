@@ -10,7 +10,7 @@ const app = new Hono();
 
 // POST /api/quests/:id/attachments — 添付追加
 app.post('/:id/attachments', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const quest = await findQuestById(id);
   if (!quest) {
     return c.json({ error: 'quest not found' }, 404);
@@ -37,7 +37,7 @@ app.post('/:id/attachments', async (c) => {
 
 // DELETE /api/quests/:questId/attachments/:attachmentId — 添付削除
 app.delete('/:questId/attachments/:attachmentId', async (c) => {
-  const { attachmentId } = c.req.param();
+  const attachmentId = Number(c.req.param('attachmentId'));
   const deleted = await deleteAttachment(attachmentId);
   if (!deleted) {
     return c.json({ error: 'attachment not found' }, 404);

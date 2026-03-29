@@ -1,5 +1,4 @@
-import { randomUUID } from 'node:crypto';
-import type { RowDataPacket } from 'mysql2/promise';
+import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type {
   QuestPlanningMessage,
   QuestPlanningMessageRole,
@@ -7,11 +6,11 @@ import type {
 import { pool } from '~/db';
 
 type MessageRow = RowDataPacket & {
-  id: string;
-  quest_id: string;
+  id: number;
+  quest_id: number;
   role: QuestPlanningMessageRole;
   content: string | null;
-  planning_job_id: string | null;
+  planning_job_id: number | null;
   runtime_job_id: string | null;
   sort_order: number;
   created_at: Date;
@@ -29,7 +28,7 @@ const toMessage = (row: MessageRow): QuestPlanningMessage => ({
 });
 
 const findQuestPlanningMessageById = async (
-  id: string
+  id: number
 ): Promise<QuestPlanningMessage | undefined> => {
   const [rows] = await pool.query<MessageRow[]>(
     `SELECT m.*, j.runtime_job_id
@@ -43,17 +42,15 @@ const findQuestPlanningMessageById = async (
 };
 
 export const insertQuestPlanningMessage = async (data: {
-  questId: string;
+  questId: number;
   role: QuestPlanningMessageRole;
   content?: string;
-  planningJobId?: string;
+  planningJobId?: number;
   sortOrder: number;
 }): Promise<QuestPlanningMessage> => {
-  const id = randomUUID();
-  await pool.query(
-    'INSERT INTO quest_planning_messages (id, quest_id, role, content, planning_job_id, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+  const [result] = await pool.query<ResultSetHeader>(
+    'INSERT INTO quest_planning_messages (quest_id, role, content, planning_job_id, sort_order) VALUES (?, ?, ?, ?, ?)',
     [
-      id,
       data.questId,
       data.role,
       data.content ?? null,
@@ -61,13 +58,13 @@ export const insertQuestPlanningMessage = async (data: {
       data.sortOrder,
     ]
   );
-  const msg = await findQuestPlanningMessageById(id);
+  const msg = await findQuestPlanningMessageById(result.insertId);
   if (!msg) throw new Error('Failed to insert quest_planning_message');
   return msg;
 };
 
 export const findQuestPlanningMessagesByQuestId = async (
-  questId: string
+  questId: number
 ): Promise<QuestPlanningMessage[]> => {
   const [rows] = await pool.query<MessageRow[]>(
     `SELECT m.*, j.runtime_job_id
@@ -81,7 +78,7 @@ export const findQuestPlanningMessagesByQuestId = async (
 };
 
 export const deleteQuestPlanningMessagesByQuestId = async (
-  questId: string
+  questId: number
 ): Promise<void> => {
   await pool.query('DELETE FROM quest_planning_messages WHERE quest_id = ?', [
     questId,
@@ -89,7 +86,7 @@ export const deleteQuestPlanningMessagesByQuestId = async (
 };
 
 export const countQuestPlanningMessages = async (
-  questId: string
+  questId: number
 ): Promise<number> => {
   const [rows] = await pool.query<(RowDataPacket & { cnt: number })[]>(
     'SELECT COUNT(*) AS cnt FROM quest_planning_messages WHERE quest_id = ?',

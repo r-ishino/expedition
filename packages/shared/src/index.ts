@@ -6,11 +6,11 @@ export type HealthStatus = {
 
 export type JobRequest = {
   prompt: string;
-  territoryId?: string;
+  territoryId?: number;
 };
 
 export type Territory = {
-  id: string;
+  id: number;
   name: string;
   path: string;
   createdAt: string;
@@ -97,8 +97,8 @@ export type JobStreamEvent =
 // QuestPlanningJob（計画フェーズのジョブ実行記録）
 
 export type QuestPlanningJob = {
-  id: string;
-  questId: string;
+  id: number;
+  questId: number;
   runtimeJobId: string;
   jobType: string;
   prompt: string;
@@ -115,11 +115,11 @@ export type QuestPlanningJob = {
 export type QuestPlanningMessageRole = 'user' | 'assistant';
 
 export type QuestPlanningMessage = {
-  id: string;
-  questId: string;
+  id: number;
+  questId: number;
   role: QuestPlanningMessageRole;
   content: string | null;
-  planningJobId: string | null;
+  planningJobId: number | null;
   /** assistant メッセージの場合、紐づくジョブの runtimeJobId */
   runtimeJobId: string | null;
   sortOrder: number;
@@ -131,14 +131,14 @@ export type QuestPlanningMessage = {
 export type QuestStatus = 'draft' | 'decomposing' | 'decomposed';
 
 export type Quest = {
-  id: string;
+  id: number;
   jiraIssueKey: string | null;
   title: string;
   description: string | null;
   status: QuestStatus;
   hasUiChange: boolean;
   hasSchemaChange: boolean;
-  territoryIds: string[];
+  territoryIds: number[];
   attachments: QuestAttachment[];
   createdAt: string;
   updatedAt: string;
@@ -147,8 +147,8 @@ export type Quest = {
 export type QuestAttachmentType = 'reference' | 'ui_image';
 
 export type QuestAttachment = {
-  id: string;
-  questId: string;
+  id: number;
+  questId: number;
   type: QuestAttachmentType;
   name: string;
   path: string;
@@ -158,7 +158,7 @@ export type QuestAttachment = {
 export type QuestRequest = {
   title: string;
   description?: string;
-  territoryIds?: string[];
+  territoryIds?: number[];
   hasUiChange?: boolean;
   hasSchemaChange?: boolean;
 };
@@ -173,20 +173,20 @@ export type QuestJobRequest = {
 export type WaypointStatus = 'pending' | 'approved' | 'reviewing';
 
 export type WaypointDependency = {
-  id: string;
-  fromWaypointId: string;
-  toWaypointId: string;
+  id: number;
+  fromWaypointId: number;
+  toWaypointId: number;
   label: string | null;
   createdAt: string;
 };
 
 export type Waypoint = {
-  id: string;
-  questId: string;
+  id: number;
+  questId: number;
   title: string;
   description: string | null;
   status: WaypointStatus;
-  challengeId: string | null;
+  challengeId: number | null;
   estimate: string | null;
   uncertainty: string | null;
   sortOrder: number;

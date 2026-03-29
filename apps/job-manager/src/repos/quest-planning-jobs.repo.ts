@@ -1,11 +1,10 @@
-import { randomUUID } from 'node:crypto';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type { QuestPlanningJob, JobStatus } from '@expedition/shared';
 import { pool } from '~/db';
 
 type JobRow = RowDataPacket & {
-  id: string;
-  quest_id: string;
+  id: number;
+  quest_id: number;
   runtime_job_id: string;
   job_type: string;
   prompt: string;
@@ -32,7 +31,7 @@ const toJob = (row: JobRow): QuestPlanningJob => ({
 });
 
 export const findQuestPlanningJobById = async (
-  id: string
+  id: number
 ): Promise<QuestPlanningJob | undefined> => {
   const [rows] = await pool.query<JobRow[]>(
     'SELECT * FROM quest_planning_jobs WHERE id = ? LIMIT 1',
@@ -43,23 +42,22 @@ export const findQuestPlanningJobById = async (
 };
 
 export const insertQuestPlanningJob = async (data: {
-  questId: string;
+  questId: number;
   runtimeJobId: string;
   jobType: string;
   prompt: string;
 }): Promise<QuestPlanningJob> => {
-  const id = randomUUID();
-  await pool.query(
-    'INSERT INTO quest_planning_jobs (id, quest_id, runtime_job_id, job_type, prompt, status) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, data.questId, data.runtimeJobId, data.jobType, data.prompt, 'queued']
+  const [result] = await pool.query<ResultSetHeader>(
+    'INSERT INTO quest_planning_jobs (quest_id, runtime_job_id, job_type, prompt, status) VALUES (?, ?, ?, ?, ?)',
+    [data.questId, data.runtimeJobId, data.jobType, data.prompt, 'queued']
   );
-  const job = await findQuestPlanningJobById(id);
+  const job = await findQuestPlanningJobById(result.insertId);
   if (!job) throw new Error('Failed to insert quest_planning_job');
   return job;
 };
 
 export const findQuestPlanningJobsByQuestId = async (
-  questId: string
+  questId: number
 ): Promise<QuestPlanningJob[]> => {
   const [rows] = await pool.query<JobRow[]>(
     'SELECT * FROM quest_planning_jobs WHERE quest_id = ? ORDER BY created_at DESC',
@@ -69,7 +67,7 @@ export const findQuestPlanningJobsByQuestId = async (
 };
 
 export const deleteQuestPlanningJobsByQuestId = async (
-  questId: string
+  questId: number
 ): Promise<void> => {
   await pool.query('DELETE FROM quest_planning_jobs WHERE quest_id = ?', [
     questId,
@@ -77,7 +75,7 @@ export const deleteQuestPlanningJobsByQuestId = async (
 };
 
 export const updateQuestPlanningJobStatus = async (
-  id: string,
+  id: number,
   status: JobStatus,
   extra?: {
     exitCode?: number | null;

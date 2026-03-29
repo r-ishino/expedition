@@ -1,7 +1,9 @@
 import {
+  bigint,
   boolean,
   int,
   mysqlTable,
+  serial,
   text,
   timestamp,
   varchar,
@@ -11,7 +13,7 @@ import {
 // territories — 管理対象リポジトリ（領地）
 // ------------------------------------------------------------
 export const territories = mysqlTable('territories', {
-  id: varchar('id', { length: 36 }).primaryKey(),
+  id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
   path: varchar('path', { length: 500 }).notNull().unique(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -23,7 +25,7 @@ export const territories = mysqlTable('territories', {
 // [未確定] カラム構成は Jira 連携実装時に決定
 // ------------------------------------------------------------
 export const quests = mysqlTable('quests', {
-  id: varchar('id', { length: 36 }).primaryKey(),
+  id: serial('id').primaryKey(),
   jiraIssueKey: varchar('jira_issue_key', { length: 50 }),
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
@@ -40,8 +42,8 @@ export const quests = mysqlTable('quests', {
 // quest_attachments — quest の添付資料（補足資料 + UIイメージ）
 // ------------------------------------------------------------
 export const questAttachments = mysqlTable('quest_attachments', {
-  id: varchar('id', { length: 36 }).primaryKey(),
-  questId: varchar('quest_id', { length: 36 }).notNull(),
+  id: serial('id').primaryKey(),
+  questId: bigint('quest_id', { mode: 'number' }).notNull(),
   // 添付の種類: 'reference'（補足資料）| 'ui_image'（完成UIイメージ）
   type: varchar('type', { length: 20 }).notNull(),
   // 表示名（例: 'サンプル取り込みCSV.csv'）
@@ -55,9 +57,9 @@ export const questAttachments = mysqlTable('quest_attachments', {
 // quest_territories — quest と territory の多対多（修正リポジトリ）
 // ------------------------------------------------------------
 export const questTerritories = mysqlTable('quest_territories', {
-  id: varchar('id', { length: 36 }).primaryKey(),
-  questId: varchar('quest_id', { length: 36 }).notNull(),
-  territoryId: varchar('territory_id', { length: 36 }).notNull(),
+  id: serial('id').primaryKey(),
+  questId: bigint('quest_id', { mode: 'number' }).notNull(),
+  territoryId: bigint('territory_id', { mode: 'number' }).notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
@@ -65,12 +67,12 @@ export const questTerritories = mysqlTable('quest_territories', {
 // waypoints — quest から細分化されたサブタスク（中間地点）
 // ------------------------------------------------------------
 export const waypoints = mysqlTable('waypoints', {
-  id: varchar('id', { length: 36 }).primaryKey(),
-  questId: varchar('quest_id', { length: 36 }).notNull(),
+  id: serial('id').primaryKey(),
+  questId: bigint('quest_id', { mode: 'number' }).notNull(),
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
   status: varchar('status', { length: 20 }).notNull(),
-  challengeId: varchar('challenge_id', { length: 36 }),
+  challengeId: bigint('challenge_id', { mode: 'number' }),
   // 見積もり（例: '~50行'）
   estimate: varchar('estimate', { length: 50 }),
   // 不確定要素の説明
@@ -85,8 +87,8 @@ export const waypoints = mysqlTable('waypoints', {
 // waypoint_categories — waypoint のカテゴリタグ（1つの waypoint に複数）
 // ------------------------------------------------------------
 export const waypointCategories = mysqlTable('waypoint_categories', {
-  id: varchar('id', { length: 36 }).primaryKey(),
-  waypointId: varchar('waypoint_id', { length: 36 }).notNull(),
+  id: serial('id').primaryKey(),
+  waypointId: bigint('waypoint_id', { mode: 'number' }).notNull(),
   // カテゴリ名（例: 'schema', 'backend', 'frontend'）
   name: varchar('name', { length: 50 }).notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -96,11 +98,11 @@ export const waypointCategories = mysqlTable('waypoint_categories', {
 // waypoint_dependencies — waypoint 間の依存関係
 // ------------------------------------------------------------
 export const waypointDependencies = mysqlTable('waypoint_dependencies', {
-  id: varchar('id', { length: 36 }).primaryKey(),
+  id: serial('id').primaryKey(),
   // 依存元（この waypoint が完了してから…）
-  fromWaypointId: varchar('from_waypoint_id', { length: 36 }).notNull(),
+  fromWaypointId: bigint('from_waypoint_id', { mode: 'number' }).notNull(),
   // 依存先（…この waypoint を開始できる）
-  toWaypointId: varchar('to_waypoint_id', { length: 36 }).notNull(),
+  toWaypointId: bigint('to_waypoint_id', { mode: 'number' }).notNull(),
   // 依存関係のラベル（例: 'rake db:migrate', 'Deploy backend'）
   label: varchar('label', { length: 100 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -110,8 +112,8 @@ export const waypointDependencies = mysqlTable('waypoint_dependencies', {
 // quest_planning_jobs — Quest 計画フェーズのジョブ実行記録
 // ------------------------------------------------------------
 export const questPlanningJobs = mysqlTable('quest_planning_jobs', {
-  id: varchar('id', { length: 36 }).primaryKey(),
-  questId: varchar('quest_id', { length: 36 }).notNull(),
+  id: serial('id').primaryKey(),
+  questId: bigint('quest_id', { mode: 'number' }).notNull(),
   // インメモリのジョブID（SSEストリームで使用）
   runtimeJobId: varchar('runtime_job_id', { length: 36 }).notNull(),
   jobType: varchar('job_type', { length: 50 }).notNull(),
@@ -128,13 +130,13 @@ export const questPlanningJobs = mysqlTable('quest_planning_jobs', {
 // quest_planning_messages — Quest 計画フェーズの会話メッセージ
 // ------------------------------------------------------------
 export const questPlanningMessages = mysqlTable('quest_planning_messages', {
-  id: varchar('id', { length: 36 }).primaryKey(),
-  questId: varchar('quest_id', { length: 36 }).notNull(),
+  id: serial('id').primaryKey(),
+  questId: bigint('quest_id', { mode: 'number' }).notNull(),
   role: varchar('role', { length: 20 }).notNull(),
   // user メッセージ: ユーザーの入力テキスト / assistant: null
   content: text('content'),
   // assistant メッセージ: 紐づくジョブID / user: null
-  planningJobId: varchar('planning_job_id', { length: 36 }),
+  planningJobId: bigint('planning_job_id', { mode: 'number' }),
   sortOrder: int('sort_order').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
@@ -143,8 +145,8 @@ export const questPlanningMessages = mysqlTable('quest_planning_messages', {
 // challenges — Claude Code の実行記録（挑戦）
 // ------------------------------------------------------------
 export const challenges = mysqlTable('challenges', {
-  id: varchar('id', { length: 36 }).primaryKey(),
-  waypointId: varchar('waypoint_id', { length: 36 }),
+  id: serial('id').primaryKey(),
+  waypointId: bigint('waypoint_id', { mode: 'number' }),
   status: varchar('status', { length: 20 }).notNull(),
   prompt: text('prompt').notNull(),
   stdout: text('stdout').notNull(),
@@ -159,8 +161,8 @@ export const challenges = mysqlTable('challenges', {
 // [未確定] カラム構成は worktree 並列実行（PoC-3）実装時に決定
 // ------------------------------------------------------------
 export const camps = mysqlTable('camps', {
-  id: varchar('id', { length: 36 }).primaryKey(),
-  challengeId: varchar('challenge_id', { length: 36 }).notNull(),
+  id: serial('id').primaryKey(),
+  challengeId: bigint('challenge_id', { mode: 'number' }).notNull(),
   branch: varchar('branch', { length: 255 }).notNull(),
   path: varchar('path', { length: 500 }).notNull(),
   status: varchar('status', { length: 20 }).notNull(),
@@ -173,8 +175,8 @@ export const camps = mysqlTable('camps', {
 // [未確定] カラム構成は PR 管理実装時に決定
 // ------------------------------------------------------------
 export const dispatches = mysqlTable('dispatches', {
-  id: varchar('id', { length: 36 }).primaryKey(),
-  challengeId: varchar('challenge_id', { length: 36 }).notNull(),
+  id: serial('id').primaryKey(),
+  challengeId: bigint('challenge_id', { mode: 'number' }).notNull(),
   prNumber: int('pr_number').notNull(),
   prUrl: varchar('pr_url', { length: 500 }).notNull(),
   status: varchar('status', { length: 20 }).notNull(),
@@ -187,8 +189,8 @@ export const dispatches = mysqlTable('dispatches', {
 // [未確定] カラム構成は CI 監視実装時に決定
 // ------------------------------------------------------------
 export const checkpoints = mysqlTable('checkpoints', {
-  id: varchar('id', { length: 36 }).primaryKey(),
-  dispatchId: varchar('dispatch_id', { length: 36 }).notNull(),
+  id: serial('id').primaryKey(),
+  dispatchId: bigint('dispatch_id', { mode: 'number' }).notNull(),
   runId: varchar('run_id', { length: 100 }).notNull(),
   status: varchar('status', { length: 20 }).notNull(),
   conclusion: varchar('conclusion', { length: 20 }),
@@ -202,8 +204,8 @@ export const checkpoints = mysqlTable('checkpoints', {
 // [未確定] カラム構成は運用開始後に決定
 // ------------------------------------------------------------
 export const journals = mysqlTable('journals', {
-  id: varchar('id', { length: 36 }).primaryKey(),
-  challengeId: varchar('challenge_id', { length: 36 }).notNull(),
+  id: serial('id').primaryKey(),
+  challengeId: bigint('challenge_id', { mode: 'number' }).notNull(),
   event: varchar('event', { length: 50 }).notNull(),
   detail: text('detail'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

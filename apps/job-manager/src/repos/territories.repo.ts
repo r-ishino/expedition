@@ -1,11 +1,10 @@
-import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type { Territory } from '@expedition/shared';
 import { pool } from '~/db';
 
 type TerritoryRow = RowDataPacket & {
-  id: string;
+  id: number;
   name: string;
   path: string;
   created_at: Date;
@@ -28,7 +27,7 @@ export const findAllTerritories = async (): Promise<Territory[]> => {
 };
 
 export const findTerritoryById = async (
-  id: string
+  id: number
 ): Promise<Territory | undefined> => {
   const [rows] = await pool.query<TerritoryRow[]>(
     'SELECT * FROM territories WHERE id = ? LIMIT 1',
@@ -42,20 +41,19 @@ export const insertTerritory = async (data: {
   name: string;
   path: string;
 }): Promise<Territory> => {
-  const id = randomUUID();
   const resolvedPath = resolve(data.path);
 
-  await pool.query(
-    'INSERT INTO territories (id, name, path) VALUES (?, ?, ?)',
-    [id, data.name, resolvedPath]
+  const [result] = await pool.query<ResultSetHeader>(
+    'INSERT INTO territories (name, path) VALUES (?, ?)',
+    [data.name, resolvedPath]
   );
 
-  const territory = await findTerritoryById(id);
+  const territory = await findTerritoryById(result.insertId);
   if (!territory) throw new Error('Failed to insert territory');
   return territory;
 };
 
-export const deleteTerritory = async (id: string): Promise<boolean> => {
+export const deleteTerritory = async (id: number): Promise<boolean> => {
   const [result] = await pool.query<ResultSetHeader>(
     'DELETE FROM territories WHERE id = ?',
     [id]

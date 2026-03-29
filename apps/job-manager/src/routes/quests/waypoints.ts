@@ -11,7 +11,7 @@ const app = new Hono();
 
 // GET /api/quests/:id/waypoints — waypoint一覧
 app.get('/:id/waypoints', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const quest = await findQuestById(id);
   if (!quest) {
     return c.json({ error: 'quest not found' }, 404);
@@ -23,7 +23,7 @@ app.get('/:id/waypoints', async (c) => {
 
 // PUT /api/quests/:questId/waypoints/:waypointId — waypoint編集
 app.put('/:questId/waypoints/:waypointId', async (c) => {
-  const { waypointId } = c.req.param();
+  const waypointId = Number(c.req.param('waypointId'));
   const body = await c.req.json<{
     title?: string;
     description?: string;
@@ -43,14 +43,14 @@ app.put('/:questId/waypoints/:waypointId', async (c) => {
 
 // DELETE /api/quests/:questId/waypoints — quest配下のwaypoint全削除
 app.delete('/:questId/waypoints', async (c) => {
-  const { questId } = c.req.param();
+  const questId = Number(c.req.param('questId'));
   await deleteWaypointsByQuestId(questId);
   return c.json({ ok: true });
 });
 
 // DELETE /api/quests/:questId/waypoints/:waypointId — waypoint削除
 app.delete('/:questId/waypoints/:waypointId', async (c) => {
-  const { waypointId } = c.req.param();
+  const waypointId = Number(c.req.param('waypointId'));
   const deleted = await deleteWaypoint(waypointId);
   if (!deleted) {
     return c.json({ error: 'waypoint not found' }, 404);

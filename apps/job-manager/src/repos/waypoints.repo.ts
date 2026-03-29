@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type {
   Waypoint,
@@ -18,12 +17,12 @@ import {
 } from './waypoint-dependencies.repo';
 
 type WaypointRow = RowDataPacket & {
-  id: string;
-  quest_id: string;
+  id: number;
+  quest_id: number;
   title: string;
   description: string | null;
   status: WaypointStatus;
-  challenge_id: string | null;
+  challenge_id: number | null;
   estimate: string | null;
   uncertainty: string | null;
   sort_order: number;
@@ -68,7 +67,7 @@ const attachRelations = async (rows: WaypointRow[]): Promise<Waypoint[]> => {
 };
 
 export const findWaypointsByQuestId = async (
-  questId: string
+  questId: number
 ): Promise<Waypoint[]> => {
   const [rows] = await pool.query<WaypointRow[]>(
     'SELECT * FROM waypoints WHERE quest_id = ? ORDER BY sort_order, created_at',
@@ -86,34 +85,32 @@ export type WaypointInsertItem = {
 };
 
 export const insertManyWaypoints = async (
-  questId: string,
+  questId: number,
   items: WaypointInsertItem[]
 ): Promise<Waypoint[]> => {
   if (items.length === 0) return [];
 
-  const waypointIds: string[] = [];
-  const values = items.map((item, index) => {
-    const id = randomUUID();
-    waypointIds.push(id);
-    return [
-      id,
-      questId,
-      item.title,
-      item.description ?? null,
-      'pending',
-      item.estimate ?? null,
-      item.uncertainty ?? null,
-      index,
-    ];
-  });
+  const values = items.map((item, index) => [
+    questId,
+    item.title,
+    item.description ?? null,
+    'pending',
+    item.estimate ?? null,
+    item.uncertainty ?? null,
+    index,
+  ]);
 
-  const placeholders = values.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+  const placeholders = values.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
   const flat = values.flat();
 
-  await pool.query(
-    `INSERT INTO waypoints (id, quest_id, title, description, status, estimate, uncertainty, sort_order) VALUES ${placeholders}`,
+  const [result] = await pool.query<ResultSetHeader>(
+    `INSERT INTO waypoints (quest_id, title, description, status, estimate, uncertainty, sort_order) VALUES ${placeholders}`,
     flat
   );
+
+  // AUTO_INCREMENT の一括挿入では、insertId が最初のIDを返す
+  const firstId = result.insertId;
+  const waypointIds = items.map((_, i) => firstId + i);
 
   // カテゴリの一括挿入
   await Promise.all(
@@ -139,7 +136,7 @@ export type WaypointUpdateData = {
 };
 
 export const updateWaypoint = async (
-  id: string,
+  id: number,
   data: WaypointUpdateData
 ): Promise<Waypoint | undefined> => {
   const sets: string[] = [];
@@ -209,7 +206,7 @@ export const updateWaypoint = async (
   });
 };
 
-export const deleteWaypoint = async (id: string): Promise<boolean> => {
+export const deleteWaypoint = async (id: number): Promise<boolean> => {
   await Promise.all([
     deleteCategoriesByWaypointId(id),
     deleteDependenciesByWaypointIds([id]),
@@ -222,7 +219,7 @@ export const deleteWaypoint = async (id: string): Promise<boolean> => {
 };
 
 export const deleteWaypointsByQuestId = async (
-  questId: string
+  questId: number
 ): Promise<void> => {
   // 先にカテゴリと依存関係を削除
   const [rows] = await pool.query<WaypointRow[]>(

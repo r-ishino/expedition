@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type { Quest, QuestStatus } from '@expedition/shared';
 import { pool } from '~/db';
@@ -15,7 +14,7 @@ import {
 } from './quest-attachments.repo';
 
 type QuestRow = RowDataPacket & {
-  id: string;
+  id: number;
   jira_issue_key: string | null;
   title: string;
   description: string | null;
@@ -28,7 +27,7 @@ type QuestRow = RowDataPacket & {
 
 const toQuest = (
   row: QuestRow,
-  extra: { territoryIds?: string[] } = {}
+  extra: { territoryIds?: number[] } = {}
 ): Omit<Quest, 'attachments'> => ({
   id: row.id,
   jiraIssueKey: row.jira_issue_key,
@@ -59,7 +58,7 @@ export const findAllQuests = async (): Promise<Quest[]> => {
   }));
 };
 
-export const findQuestById = async (id: string): Promise<Quest | undefined> => {
+export const findQuestById = async (id: number): Promise<Quest | undefined> => {
   const [rows] = await pool.query<QuestRow[]>(
     'SELECT * FROM quests WHERE id = ? LIMIT 1',
     [id]
@@ -80,16 +79,13 @@ export const findQuestById = async (id: string): Promise<Quest | undefined> => {
 export const insertQuest = async (data: {
   title: string;
   description?: string;
-  territoryIds?: string[];
+  territoryIds?: number[];
   hasUiChange?: boolean;
   hasSchemaChange?: boolean;
 }): Promise<Quest> => {
-  const id = randomUUID();
-
-  await pool.query(
-    'INSERT INTO quests (id, title, description, status, has_ui_change, has_schema_change) VALUES (?, ?, ?, ?, ?, ?)',
+  const [result] = await pool.query<ResultSetHeader>(
+    'INSERT INTO quests (title, description, status, has_ui_change, has_schema_change) VALUES (?, ?, ?, ?, ?)',
     [
-      id,
       data.title,
       data.description ?? null,
       'draft',
@@ -97,6 +93,8 @@ export const insertQuest = async (data: {
       data.hasSchemaChange ?? false,
     ]
   );
+
+  const id = result.insertId;
 
   if (data.territoryIds && data.territoryIds.length > 0) {
     await setQuestTerritories(id, data.territoryIds);
@@ -107,7 +105,7 @@ export const insertQuest = async (data: {
   return quest;
 };
 
-export const deleteQuest = async (id: string): Promise<boolean> => {
+export const deleteQuest = async (id: number): Promise<boolean> => {
   await Promise.all([
     deleteQuestTerritoriesByQuestId(id),
     deleteAttachmentsByQuestId(id),
@@ -120,7 +118,7 @@ export const deleteQuest = async (id: string): Promise<boolean> => {
 };
 
 export const updateQuestStatus = async (
-  id: string,
+  id: number,
   status: QuestStatus
 ): Promise<Quest | undefined> => {
   const [result] = await pool.query<ResultSetHeader>(
@@ -132,11 +130,11 @@ export const updateQuestStatus = async (
 };
 
 export const updateQuest = async (
-  id: string,
+  id: number,
   data: {
     title?: string;
     description?: string | null;
-    territoryIds?: string[];
+    territoryIds?: number[];
   }
 ): Promise<Quest | undefined> => {
   const fields: string[] = [];
