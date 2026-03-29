@@ -30,16 +30,19 @@ type UseStreamBlocksReturn = {
   blocks: StreamBlock[];
   streaming: boolean;
   startStream: (jobId: string) => void;
+  cancel: () => Promise<void>;
   reset: () => void;
 };
 
 export const useStreamBlocks = (options?: {
+  questId?: string;
   onDone?: (event: JobStreamDone, finalBlocks: StreamBlock[]) => void;
   onError?: (event: JobStreamError) => void;
 }): UseStreamBlocksReturn => {
   const [blocks, setBlocks] = useState<StreamBlock[]>([]);
   const [streaming, setStreaming] = useState(false);
   const esRef = useRef<EventSource | null>(null);
+  const jobIdRef = useRef<string | null>(null);
   // Reactバッチ処理の影響を受けずに最新のブロックを参照するためのref
   const blocksRef = useRef<StreamBlock[]>([]);
 
@@ -53,6 +56,17 @@ export const useStreamBlocks = (options?: {
     setStreaming(false);
   };
 
+  const cancel = async (): Promise<void> => {
+    const jobId = jobIdRef.current;
+    const questId = options?.questId;
+    if (jobId && questId) {
+      await apiClient
+        .post(`/api/quests/${questId}/jobs/${jobId}/cancel`, {})
+        .catch(() => {});
+    }
+    reset();
+  };
+
   const updateBlocks = (
     updater: (prev: StreamBlock[]) => StreamBlock[]
   ): void => {
@@ -64,6 +78,7 @@ export const useStreamBlocks = (options?: {
 
   const startStream = (jobId: string): void => {
     reset();
+    jobIdRef.current = jobId;
     setStreaming(true);
 
     const es = new EventSource(apiClient.streamUrl(jobId));
@@ -141,5 +156,5 @@ export const useStreamBlocks = (options?: {
     };
   };
 
-  return { blocks, streaming, startStream, reset };
+  return { blocks, streaming, startStream, cancel, reset };
 };

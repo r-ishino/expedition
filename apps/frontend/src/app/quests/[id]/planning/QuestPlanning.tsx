@@ -89,7 +89,14 @@ export const QuestPlanning = ({ questId }: { questId: string }): ReactNode => {
 
         {/* Right pane: Workspace */}
         <div className="flex w-[580px] shrink-0 flex-col bg-white">
-          <WorkspacePane questId={questId} ref={workspaceRef} />
+          <WorkspacePane
+            onCancel={() => {
+              setManualDecomposing(false);
+              mutate().catch(() => {});
+            }}
+            questId={questId}
+            ref={workspaceRef}
+          />
         </div>
       </div>
     </div>

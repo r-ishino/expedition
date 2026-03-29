@@ -56,9 +56,11 @@ export type WorkspacePaneHandle = {
 
 export const WorkspacePane = ({
   questId,
+  onCancel,
   ref,
 }: {
   questId: string;
+  onCancel?: () => void;
   ref?: Ref<WorkspacePaneHandle>;
 }): ReactNode => {
   const { mutate } = useQuests().useShow(questId);
@@ -72,7 +74,13 @@ export const WorkspacePane = ({
     }
   };
 
-  const { blocks, streaming, startStream } = useStreamBlocks({
+  const {
+    blocks,
+    streaming,
+    startStream,
+    cancel: rawCancel,
+  } = useStreamBlocks({
+    questId,
     onDone: (_event, finalBlocks) => {
       // ストリーム完了時にブロックをメッセージ履歴に追加
       // blocksRef 経由で取得するため、Reactバッチ処理の影響を受けない
@@ -87,6 +95,29 @@ export const WorkspacePane = ({
       }, 1000);
     },
   });
+
+  const cancelAndNotify = async (): Promise<void> => {
+    await rawCancel();
+    onCancel?.();
+  };
+
+  // Esc キーでキャンセル
+  useEffect(() => {
+    if (!streaming) return;
+
+    const handleCancel = async (): Promise<void> => {
+      await rawCancel();
+      onCancel?.();
+    };
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        handleCancel().catch(() => {});
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return (): void => window.removeEventListener('keydown', handleKeyDown);
+  }, [streaming, rawCancel, onCancel]);
 
   // マウント時に会話メッセージを復元
   const restoredRef = useRef(false);
@@ -238,7 +269,15 @@ export const WorkspacePane = ({
                 応答をストリーミング中...
               </span>
             </div>
-            <span className="text-xs text-zinc-400">Esc でキャンセル</span>
+            <button
+              className="text-xs text-zinc-400 hover:text-zinc-600"
+              onClick={() => {
+                cancelAndNotify().catch(() => {});
+              }}
+              type="button"
+            >
+              Esc でキャンセル
+            </button>
           </div>
         )}
         <div className="flex h-10 items-center gap-2.5">
