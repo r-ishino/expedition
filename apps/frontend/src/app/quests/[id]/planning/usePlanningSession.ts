@@ -24,6 +24,7 @@ export type PlanningSession = {
   startDecompose: () => Promise<void>;
   cancelJob: () => Promise<void>;
   sendInstruction: () => Promise<void>;
+  resetSession: () => Promise<void>;
   updateWaypoint: (id: string, data: WaypointUpdateData) => void;
   mutateQuest: () => void;
 };
@@ -216,6 +217,17 @@ export const usePlanningSession = (questId: string): PlanningSession => {
     await startJob('freeform', text);
   };
 
+  const resetSession = async (): Promise<void> => {
+    if (streaming) {
+      await rawCancel();
+    }
+    await apiClient.delete(`/api/quests/${questId}/planning-messages`);
+    setMessages([]);
+    setInstruction('');
+    setManualDecomposing(false);
+    restoredRef.current = true;
+  };
+
   const updateWaypoint = (id: string, data: WaypointUpdateData): void => {
     apiClient
       .put(`/api/quests/${questId}/waypoints/${id}`, data)
@@ -238,6 +250,7 @@ export const usePlanningSession = (questId: string): PlanningSession => {
     startDecompose,
     cancelJob,
     sendInstruction,
+    resetSession,
     updateWaypoint,
     mutateQuest,
   };

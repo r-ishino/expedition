@@ -68,6 +68,14 @@ export const findQuestPlanningJobsByQuestId = async (
   return rows.map(toJob);
 };
 
+export const deleteQuestPlanningJobsByQuestId = async (
+  questId: string
+): Promise<void> => {
+  await pool.query('DELETE FROM quest_planning_jobs WHERE quest_id = ?', [
+    questId,
+  ]);
+};
+
 export const updateQuestPlanningJobStatus = async (
   id: string,
   status: JobStatus,

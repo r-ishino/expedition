@@ -12,8 +12,14 @@ import {
   findWaypointsByQuestId,
   deleteWaypointsByQuestId,
 } from '~/repos/waypoints.repo';
-import { findQuestPlanningJobsByQuestId } from '~/repos/quest-planning-jobs.repo';
-import { findQuestPlanningMessagesByQuestId } from '~/repos/quest-planning-messages.repo';
+import {
+  deleteQuestPlanningJobsByQuestId,
+  findQuestPlanningJobsByQuestId,
+} from '~/repos/quest-planning-jobs.repo';
+import {
+  deleteQuestPlanningMessagesByQuestId,
+  findQuestPlanningMessagesByQuestId,
+} from '~/repos/quest-planning-messages.repo';
 import { executeJob } from '~/services/job-executor';
 import { cancelJob } from '~/services/claude-runner';
 import { app as attachmentsApp } from './attachments';
@@ -147,6 +153,19 @@ app.get('/:id/planning-messages', async (c) => {
 
   const messages = await findQuestPlanningMessagesByQuestId(id);
   return c.json(messages);
+});
+
+// DELETE /api/quests/:id/planning-messages — 計画メッセージ全削除
+app.delete('/:id/planning-messages', async (c) => {
+  const id = c.req.param('id');
+  const quest = await findQuestById(id);
+  if (!quest) {
+    return c.json({ error: 'quest not found' }, 404);
+  }
+
+  await deleteQuestPlanningMessagesByQuestId(id);
+  await deleteQuestPlanningJobsByQuestId(id);
+  return c.json({ ok: true });
 });
 
 // GET /api/quests/:id/planning-jobs — 計画ジョブ一覧
