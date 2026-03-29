@@ -71,10 +71,16 @@ const WaypointCard = ({
   const isApproved = waypoint.status === 'approved';
 
   return (
-    <div
-      className="relative flex cursor-pointer border-b border-zinc-200 transition-colors hover:bg-zinc-50"
-      onClick={onClick}
-    >
+    <div className="relative flex cursor-pointer border-b border-zinc-200 transition-colors hover:bg-zinc-50">
+      {/* Accessible click target covering the entire card */}
+      <button
+        className="absolute inset-0 z-10"
+        onClick={onClick}
+        type="button"
+      >
+        <span className="sr-only">{waypoint.title} を編集</span>
+      </button>
+
       {/* Timeline column */}
       <div className="flex w-14 shrink-0 flex-col items-center pt-5">
         <StepCircle isApproved={isApproved} step={step} />
