@@ -11,5 +11,12 @@ const server = new McpServer({
 registerWaypointTools(server);
 
 // サーバー起動
-const transport = new StdioServerTransport();
-await server.connect(transport);
+const main = async (): Promise<void> => {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+};
+
+main().catch((err: unknown) => {
+  console.error('MCP server failed to start:', err);
+  process.exit(1);
+});

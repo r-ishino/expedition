@@ -42,10 +42,23 @@ const buildPrompt = (context: JobContext): string => {
     throw new Error('freeform job requires an instruction');
   }
 
+  const toolGuide =
+    context.waypoints.length > 0
+      ? `
+## 利用可能なツール
+Waypointを変更する必要がある場合は、以下のMCPツールを使って直接変更してください。テキストで提案するだけでなく、実際にツールを呼び出してください。
+
+- list_waypoints: 現在のWaypoint一覧を取得
+- create_waypoint: 新しいWaypointを作成（title, description?, estimate?, uncertainty?, categories?）
+- update_waypoint: Waypointを更新（waypointId, title?, description?, status?, estimate?, uncertainty?, sortOrder?, categories?）
+- delete_waypoint: Waypointを削除（waypointId）`
+      : '';
+
   const sections = [
     buildQuestSection(context),
     buildWaypointsSection(context.waypoints),
     buildConversationSection(context.planningMessages),
+    toolGuide,
     `\n## ユーザーの指示\n${context.instruction}`,
   ];
 
