@@ -1,6 +1,7 @@
 import {
   bigint,
   boolean,
+  foreignKey,
   int,
   mysqlTable,
   serial,
@@ -43,7 +44,9 @@ export const quests = mysqlTable('quests', {
 // ------------------------------------------------------------
 export const questAttachments = mysqlTable('quest_attachments', {
   id: serial('id').primaryKey(),
-  questId: bigint('quest_id', { mode: 'number' }).notNull(),
+  questId: bigint('quest_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => quests.id),
   // 添付の種類: 'reference'（補足資料）| 'ui_image'（完成UIイメージ）
   type: varchar('type', { length: 20 }).notNull(),
   // 表示名（例: 'サンプル取り込みCSV.csv'）
@@ -58,8 +61,12 @@ export const questAttachments = mysqlTable('quest_attachments', {
 // ------------------------------------------------------------
 export const questTerritories = mysqlTable('quest_territories', {
   id: serial('id').primaryKey(),
-  questId: bigint('quest_id', { mode: 'number' }).notNull(),
-  territoryId: bigint('territory_id', { mode: 'number' }).notNull(),
+  questId: bigint('quest_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => quests.id),
+  territoryId: bigint('territory_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => territories.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
@@ -68,11 +75,16 @@ export const questTerritories = mysqlTable('quest_territories', {
 // ------------------------------------------------------------
 export const waypoints = mysqlTable('waypoints', {
   id: serial('id').primaryKey(),
-  questId: bigint('quest_id', { mode: 'number' }).notNull(),
+  questId: bigint('quest_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => quests.id),
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
   status: varchar('status', { length: 20 }).notNull(),
-  challengeId: bigint('challenge_id', { mode: 'number' }),
+  challengeId: bigint('challenge_id', {
+    mode: 'number',
+    unsigned: true,
+  }).references(() => challenges.id),
   // 見積もり（例: '~50行'）
   estimate: varchar('estimate', { length: 50 }),
   // 不確定要素の説明
@@ -88,7 +100,9 @@ export const waypoints = mysqlTable('waypoints', {
 // ------------------------------------------------------------
 export const waypointCategories = mysqlTable('waypoint_categories', {
   id: serial('id').primaryKey(),
-  waypointId: bigint('waypoint_id', { mode: 'number' }).notNull(),
+  waypointId: bigint('waypoint_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => waypoints.id),
   // カテゴリ名（例: 'schema', 'backend', 'frontend'）
   name: varchar('name', { length: 50 }).notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -100,9 +114,13 @@ export const waypointCategories = mysqlTable('waypoint_categories', {
 export const waypointDependencies = mysqlTable('waypoint_dependencies', {
   id: serial('id').primaryKey(),
   // 依存元（この waypoint が完了してから…）
-  fromWaypointId: bigint('from_waypoint_id', { mode: 'number' }).notNull(),
+  fromWaypointId: bigint('from_waypoint_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => waypoints.id),
   // 依存先（…この waypoint を開始できる）
-  toWaypointId: bigint('to_waypoint_id', { mode: 'number' }).notNull(),
+  toWaypointId: bigint('to_waypoint_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => waypoints.id),
   // 依存関係のラベル（例: 'rake db:migrate', 'Deploy backend'）
   label: varchar('label', { length: 100 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -113,7 +131,9 @@ export const waypointDependencies = mysqlTable('waypoint_dependencies', {
 // ------------------------------------------------------------
 export const questPlanningJobs = mysqlTable('quest_planning_jobs', {
   id: serial('id').primaryKey(),
-  questId: bigint('quest_id', { mode: 'number' }).notNull(),
+  questId: bigint('quest_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => quests.id),
   // インメモリのジョブID（SSEストリームで使用）
   runtimeJobId: varchar('runtime_job_id', { length: 36 }).notNull(),
   jobType: varchar('job_type', { length: 50 }).notNull(),
@@ -129,24 +149,42 @@ export const questPlanningJobs = mysqlTable('quest_planning_jobs', {
 // ------------------------------------------------------------
 // quest_planning_messages — Quest 計画フェーズの会話メッセージ
 // ------------------------------------------------------------
-export const questPlanningMessages = mysqlTable('quest_planning_messages', {
-  id: serial('id').primaryKey(),
-  questId: bigint('quest_id', { mode: 'number' }).notNull(),
-  role: varchar('role', { length: 20 }).notNull(),
-  // user メッセージ: ユーザーの入力テキスト / assistant: null
-  content: text('content'),
-  // assistant メッセージ: 紐づくジョブID / user: null
-  planningJobId: bigint('planning_job_id', { mode: 'number' }),
-  sortOrder: int('sort_order').notNull().default(0),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-});
+export const questPlanningMessages = mysqlTable(
+  'quest_planning_messages',
+  {
+    id: serial('id').primaryKey(),
+    questId: bigint('quest_id', { mode: 'number', unsigned: true })
+      .notNull()
+      .references(() => quests.id),
+    role: varchar('role', { length: 20 }).notNull(),
+    // user メッセージ: ユーザーの入力テキスト / assistant: null
+    content: text('content'),
+    // assistant メッセージ: 紐づくジョブID / user: null
+    planningJobId: bigint('planning_job_id', {
+      mode: 'number',
+      unsigned: true,
+    }),
+    sortOrder: int('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    foreignKey({
+      name: 'qpm_planning_job_id_fk',
+      columns: [table.planningJobId],
+      foreignColumns: [questPlanningJobs.id],
+    }),
+  ]
+);
 
 // ------------------------------------------------------------
 // challenges — Claude Code の実行記録（挑戦）
 // ------------------------------------------------------------
 export const challenges = mysqlTable('challenges', {
   id: serial('id').primaryKey(),
-  waypointId: bigint('waypoint_id', { mode: 'number' }),
+  waypointId: bigint('waypoint_id', {
+    mode: 'number',
+    unsigned: true,
+  }).references(() => waypoints.id),
   status: varchar('status', { length: 20 }).notNull(),
   prompt: text('prompt').notNull(),
   stdout: text('stdout').notNull(),
@@ -162,7 +200,9 @@ export const challenges = mysqlTable('challenges', {
 // ------------------------------------------------------------
 export const camps = mysqlTable('camps', {
   id: serial('id').primaryKey(),
-  challengeId: bigint('challenge_id', { mode: 'number' }).notNull(),
+  challengeId: bigint('challenge_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => challenges.id),
   branch: varchar('branch', { length: 255 }).notNull(),
   path: varchar('path', { length: 500 }).notNull(),
   status: varchar('status', { length: 20 }).notNull(),
@@ -176,7 +216,9 @@ export const camps = mysqlTable('camps', {
 // ------------------------------------------------------------
 export const dispatches = mysqlTable('dispatches', {
   id: serial('id').primaryKey(),
-  challengeId: bigint('challenge_id', { mode: 'number' }).notNull(),
+  challengeId: bigint('challenge_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => challenges.id),
   prNumber: int('pr_number').notNull(),
   prUrl: varchar('pr_url', { length: 500 }).notNull(),
   status: varchar('status', { length: 20 }).notNull(),
@@ -190,7 +232,9 @@ export const dispatches = mysqlTable('dispatches', {
 // ------------------------------------------------------------
 export const checkpoints = mysqlTable('checkpoints', {
   id: serial('id').primaryKey(),
-  dispatchId: bigint('dispatch_id', { mode: 'number' }).notNull(),
+  dispatchId: bigint('dispatch_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => dispatches.id),
   runId: varchar('run_id', { length: 100 }).notNull(),
   status: varchar('status', { length: 20 }).notNull(),
   conclusion: varchar('conclusion', { length: 20 }),
@@ -205,7 +249,9 @@ export const checkpoints = mysqlTable('checkpoints', {
 // ------------------------------------------------------------
 export const journals = mysqlTable('journals', {
   id: serial('id').primaryKey(),
-  challengeId: bigint('challenge_id', { mode: 'number' }).notNull(),
+  challengeId: bigint('challenge_id', { mode: 'number', unsigned: true })
+    .notNull()
+    .references(() => challenges.id),
   event: varchar('event', { length: 50 }).notNull(),
   detail: text('detail'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

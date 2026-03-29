@@ -265,6 +265,16 @@ export default [
     },
   },
 
+  // DB schema: allow forward references for circular foreign keys
+  {
+    files: ['**/src/db/schema.ts'],
+    rules: {
+      '@typescript-eslint/no-use-before-define': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+    },
+  },
+
   // Prettier must be last
   prettierConfig,
 ];
