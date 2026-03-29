@@ -116,36 +116,50 @@ export const usePlanningSession = (questId: string): PlanningSession => {
     if (restoredRef.current) return;
     restoredRef.current = true;
 
-    apiClient
-      .fetch<QuestPlanningMessage[]>(`/api/quests/${questId}/planning-messages`)
-      .then((msgs) => {
-        if (msgs.length === 0) return;
+    const restore = async (): Promise<void> => {
+      const msgs = await apiClient.fetch<QuestPlanningMessage[]>(
+        `/api/quests/${questId}/planning-messages`
+      );
+      if (msgs.length === 0) return;
 
-        const restored: Message[] = [];
-        let lastAssistantJobId: string | null = null;
+      // アシスタントメッセージの jobId を収集
+      const jobIds = msgs
+        .filter(
+          (m): m is QuestPlanningMessage & { runtimeJobId: string } =>
+            m.role === 'assistant' && typeof m.runtimeJobId === 'string'
+        )
+        .map((m) => m.runtimeJobId);
 
-        for (const msg of msgs) {
-          if (msg.role === 'user') {
-            restored.push({
-              role: 'user',
-              blocks: [],
-              text: msg.content ?? '',
-            });
-          } else if (msg.role === 'assistant' && msg.runtimeJobId) {
-            lastAssistantJobId = msg.runtimeJobId;
-            restored.push({ role: 'assistant', blocks: [] });
-          }
+      // 全ブロックを一括取得
+      const blockMap =
+        jobIds.length > 0
+          ? await apiClient.post<Record<string, StreamBlock[]>>(
+              '/api/jobs/blocks/batch',
+              { jobIds }
+            )
+          : {};
+
+      const restored: Message[] = [];
+      for (const msg of msgs) {
+        if (msg.role === 'user') {
+          restored.push({
+            role: 'user',
+            blocks: [],
+            text: msg.content ?? '',
+          });
+        } else if (msg.role === 'assistant' && msg.runtimeJobId) {
+          restored.push({
+            role: 'assistant',
+            blocks: blockMap[msg.runtimeJobId] ?? [],
+          });
         }
+      }
 
-        if (lastAssistantJobId) {
-          setMessages(restored.slice(0, -1));
-          startStream(lastAssistantJobId);
-        } else {
-          setMessages(restored);
-        }
-      })
-      .catch(() => {});
-  }, [questId, startStream]);
+      setMessages(restored);
+    };
+
+    restore().catch(() => {});
+  }, [questId]);
 
   // --- アクション ---
   const startJob = async (jobType: string, text: string): Promise<void> => {

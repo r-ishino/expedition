@@ -6,24 +6,8 @@ import {
   getJobEmitter,
   getJobEventHistory,
 } from '~/services/claude-runner';
+import { ensureDoneEvent } from '~/services/events-to-blocks';
 import { readStreamEvents } from '~/services/stream-log';
-
-/** JSONL イベント末尾に done がなければ補完する（中断されたジョブ対応） */
-const ensureDoneEvent = (events: JobStreamEvent[]): JobStreamEvent[] => {
-  const hasDone = events.some((e) => e.type === 'done');
-  if (hasDone) return events;
-
-  return [
-    ...events,
-    {
-      type: 'done',
-      status: 'failed',
-      exitCode: null,
-      durationMs: null,
-      costUsd: null,
-    },
-  ];
-};
 
 const app = new Hono();
 
