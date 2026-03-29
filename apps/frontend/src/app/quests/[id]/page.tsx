@@ -1,5 +1,8 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { QuestDetail } from './QuestDetail';
+
+export const metadata: Metadata = { title: 'Quest Details' };
 
 const QuestPage = async (props: {
   params: Promise<{ id: string }>;

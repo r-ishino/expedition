@@ -1,5 +1,8 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { JobForm } from './JobForm';
+
+export const metadata: Metadata = { title: 'Claude Code Runner' };
 
 const JobsPage = (): ReactNode => (
   <div className="flex flex-1 flex-col items-center px-6 py-12 font-sans">
