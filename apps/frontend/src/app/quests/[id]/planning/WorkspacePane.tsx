@@ -80,7 +80,7 @@ export const WorkspacePane = (): ReactNode => {
       </div>
 
       {/* Sub header */}
-      <div className="flex h-10 shrink-0 items-center border-b border-zinc-200 px-5">
+      <div className="flex h-10 shrink-0 items-center justify-end border-b border-zinc-200 px-5">
         <Button size="xs" variant="outline">
           初期化
         </Button>
