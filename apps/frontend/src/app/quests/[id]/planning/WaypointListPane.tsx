@@ -71,10 +71,10 @@ const WaypointCard = ({
   const isApproved = waypoint.status === 'approved';
 
   return (
-    <div className="relative flex cursor-pointer border-b border-zinc-200 transition-colors hover:bg-zinc-50">
+    <div className="relative flex border-b border-zinc-200 transition-all hover:bg-zinc-100 hover:shadow-sm">
       {/* Accessible click target covering the entire card */}
       <button
-        className="absolute inset-0 z-10"
+        className="absolute inset-0 z-10 cursor-pointer"
         onClick={onClick}
         type="button"
       >
