@@ -19,11 +19,11 @@ import { usePlanningSessionContext } from './PlanningSessionProvider';
 type QuestWithWaypoints = Quest & { waypoints: Waypoint[] };
 
 const updateQuestApi = async (
-  id: string,
+  id: number,
   body: {
     title?: string;
     description?: string;
-    territoryIds?: string[];
+    territoryIds?: number[];
   }
 ): Promise<void> => {
   await apiClient.put(`/api/quests/${id}`, body);
@@ -196,14 +196,14 @@ const TerritorySelector = ({
   onSelect,
   onClose,
 }: {
-  questTerritoryIds: string[];
-  onSelect: (ids: string[]) => void;
+  questTerritoryIds: number[];
+  onSelect: (ids: number[]) => void;
   onClose: () => void;
 }): ReactNode => {
   const { data: territories = [] } = useTerritories().useIndex();
-  const [selected, setSelected] = useState<string[]>(questTerritoryIds);
+  const [selected, setSelected] = useState<number[]>(questTerritoryIds);
 
-  const toggle = (id: string): void => {
+  const toggle = (id: number): void => {
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
@@ -304,13 +304,13 @@ export const QuestInfoPane = (): ReactNode => {
     mutateQuest();
   };
 
-  const handleRemoveTerritory = async (territoryId: string): Promise<void> => {
+  const handleRemoveTerritory = async (territoryId: number): Promise<void> => {
     const newIds = quest.territoryIds.filter((id) => id !== territoryId);
     await updateQuestApi(quest.id, { territoryIds: newIds });
     mutateQuest();
   };
 
-  const handleAddTerritories = async (ids: string[]): Promise<void> => {
+  const handleAddTerritories = async (ids: number[]): Promise<void> => {
     const merged = [...new Set([...quest.territoryIds, ...ids])];
     await updateQuestApi(quest.id, { territoryIds: merged });
     mutateQuest();
@@ -318,7 +318,7 @@ export const QuestInfoPane = (): ReactNode => {
 
   const territoryItems = quest.territoryIds.map((id) => {
     const territory = territories.find((t) => t.id === id);
-    return { id, name: territory ? territory.name : id.slice(0, 8) };
+    return { id, name: territory ? territory.name : `#${id}` };
   });
 
   return (

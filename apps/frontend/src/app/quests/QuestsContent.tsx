@@ -26,7 +26,7 @@ const QuestCard = ({
   onDelete,
 }: {
   quest: Quest;
-  onDelete: (id: string) => void;
+  onDelete: (id: number) => void;
 }): ReactNode => (
   <div className="group relative rounded-lg border border-zinc-200 bg-white transition-colors hover:border-blue-300 hover:bg-blue-50/50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-blue-700 dark:hover:bg-blue-950/30">
     <Link className="block p-4" href={`/quests/${quest.id}`}>
@@ -36,9 +36,7 @@ const QuestCard = ({
         >
           {statusLabel[quest.status]}
         </span>
-        <span className="text-xs text-zinc-400 font-mono">
-          {quest.id.slice(0, 8)}
-        </span>
+        <span className="text-xs text-zinc-400 font-mono">#{quest.id}</span>
       </div>
       <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
         {quest.title}
@@ -71,7 +69,7 @@ const QuestsContent = (): ReactNode => {
 
   const { data: quests = [], mutate } = useQuests().useIndex();
 
-  const handleDelete = (id: string): void => {
+  const handleDelete = (id: number): void => {
     apiClient
       .delete(`/api/quests/${id}`)
       .then(() => mutate())

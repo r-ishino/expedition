@@ -1,17 +1,16 @@
-import { randomUUID } from 'node:crypto';
 import type { RowDataPacket } from 'mysql2/promise';
 import { pool } from '~/db';
 
 type QuestTerritoryRow = RowDataPacket & {
-  id: string;
-  quest_id: string;
-  territory_id: string;
+  id: number;
+  quest_id: number;
+  territory_id: number;
   created_at: Date;
 };
 
 export const findTerritoryIdsByQuestId = async (
-  questId: string
-): Promise<string[]> => {
+  questId: number
+): Promise<number[]> => {
   const [rows] = await pool.query<QuestTerritoryRow[]>(
     'SELECT * FROM quest_territories WHERE quest_id = ? ORDER BY created_at',
     [questId]
@@ -20,9 +19,9 @@ export const findTerritoryIdsByQuestId = async (
 };
 
 export const findTerritoryIdsByQuestIds = async (
-  questIds: string[]
-): Promise<Map<string, string[]>> => {
-  const result = new Map<string, string[]>();
+  questIds: number[]
+): Promise<Map<number, number[]>> => {
+  const result = new Map<number, number[]>();
   if (questIds.length === 0) return result;
 
   const placeholders = questIds.map(() => '?').join(', ');
@@ -41,8 +40,8 @@ export const findTerritoryIdsByQuestIds = async (
 };
 
 export const setQuestTerritories = async (
-  questId: string,
-  territoryIds: string[]
+  questId: number,
+  territoryIds: number[]
 ): Promise<void> => {
   await pool.query('DELETE FROM quest_territories WHERE quest_id = ?', [
     questId,
@@ -50,18 +49,18 @@ export const setQuestTerritories = async (
 
   if (territoryIds.length === 0) return;
 
-  const values = territoryIds.map((tid) => [randomUUID(), questId, tid]);
-  const placeholders = values.map(() => '(?, ?, ?)').join(', ');
+  const values = territoryIds.map((tid) => [questId, tid]);
+  const placeholders = values.map(() => '(?, ?)').join(', ');
   const flat = values.flat();
 
   await pool.query(
-    `INSERT INTO quest_territories (id, quest_id, territory_id) VALUES ${placeholders}`,
+    `INSERT INTO quest_territories (quest_id, territory_id) VALUES ${placeholders}`,
     flat
   );
 };
 
 export const deleteQuestTerritoriesByQuestId = async (
-  questId: string
+  questId: number
 ): Promise<void> => {
   await pool.query('DELETE FROM quest_territories WHERE quest_id = ?', [
     questId,

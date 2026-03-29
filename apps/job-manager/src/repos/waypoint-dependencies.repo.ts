@@ -1,12 +1,11 @@
-import { randomUUID } from 'node:crypto';
-import type { RowDataPacket } from 'mysql2/promise';
+import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type { WaypointDependency } from '@expedition/shared';
 import { pool } from '~/db';
 
 type DependencyRow = RowDataPacket & {
-  id: string;
-  from_waypoint_id: string;
-  to_waypoint_id: string;
+  id: number;
+  from_waypoint_id: number;
+  to_waypoint_id: number;
   label: string | null;
   created_at: Date;
 };
@@ -20,9 +19,9 @@ const toDependency = (row: DependencyRow): WaypointDependency => ({
 });
 
 export const findDependenciesByWaypointIds = async (
-  waypointIds: string[]
-): Promise<Map<string, WaypointDependency[]>> => {
-  const result = new Map<string, WaypointDependency[]>();
+  waypointIds: number[]
+): Promise<Map<number, WaypointDependency[]>> => {
+  const result = new Map<number, WaypointDependency[]>();
   if (waypointIds.length === 0) return result;
 
   const placeholders = waypointIds.map(() => '?').join(', ');
@@ -41,50 +40,47 @@ export const findDependenciesByWaypointIds = async (
 };
 
 export const insertDependency = async (data: {
-  fromWaypointId: string;
-  toWaypointId: string;
+  fromWaypointId: number;
+  toWaypointId: number;
   label?: string;
 }): Promise<WaypointDependency> => {
-  const id = randomUUID();
-
-  await pool.query(
-    'INSERT INTO waypoint_dependencies (id, from_waypoint_id, to_waypoint_id, label) VALUES (?, ?, ?, ?)',
-    [id, data.fromWaypointId, data.toWaypointId, data.label ?? null]
+  const [result] = await pool.query<ResultSetHeader>(
+    'INSERT INTO waypoint_dependencies (from_waypoint_id, to_waypoint_id, label) VALUES (?, ?, ?)',
+    [data.fromWaypointId, data.toWaypointId, data.label ?? null]
   );
 
   const [rows] = await pool.query<DependencyRow[]>(
     'SELECT * FROM waypoint_dependencies WHERE id = ? LIMIT 1',
-    [id]
+    [result.insertId]
   );
   return toDependency(rows[0]);
 };
 
 export const insertManyDependencies = async (
   items: {
-    fromWaypointId: string;
-    toWaypointId: string;
+    fromWaypointId: number;
+    toWaypointId: number;
     label?: string;
   }[]
 ): Promise<void> => {
   if (items.length === 0) return;
 
   const values = items.map((item) => [
-    randomUUID(),
     item.fromWaypointId,
     item.toWaypointId,
     item.label ?? null,
   ]);
-  const placeholders = values.map(() => '(?, ?, ?, ?)').join(', ');
+  const placeholders = values.map(() => '(?, ?, ?)').join(', ');
   const flat = values.flat();
 
   await pool.query(
-    `INSERT INTO waypoint_dependencies (id, from_waypoint_id, to_waypoint_id, label) VALUES ${placeholders}`,
+    `INSERT INTO waypoint_dependencies (from_waypoint_id, to_waypoint_id, label) VALUES ${placeholders}`,
     flat
   );
 };
 
 export const deleteDependenciesByWaypointIds = async (
-  waypointIds: string[]
+  waypointIds: number[]
 ): Promise<void> => {
   if (waypointIds.length === 0) return;
 

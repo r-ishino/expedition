@@ -1,11 +1,10 @@
-import { randomUUID } from 'node:crypto';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2/promise';
 import type { QuestAttachment, QuestAttachmentType } from '@expedition/shared';
 import { pool } from '~/db';
 
 type AttachmentRow = RowDataPacket & {
-  id: string;
-  quest_id: string;
+  id: number;
+  quest_id: number;
   type: QuestAttachmentType;
   name: string;
   path: string;
@@ -22,7 +21,7 @@ const toAttachment = (row: AttachmentRow): QuestAttachment => ({
 });
 
 export const findAttachmentsByQuestId = async (
-  questId: string
+  questId: number
 ): Promise<QuestAttachment[]> => {
   const [rows] = await pool.query<AttachmentRow[]>(
     'SELECT * FROM quest_attachments WHERE quest_id = ? ORDER BY created_at',
@@ -32,9 +31,9 @@ export const findAttachmentsByQuestId = async (
 };
 
 export const findAttachmentsByQuestIds = async (
-  questIds: string[]
-): Promise<Map<string, QuestAttachment[]>> => {
-  const result = new Map<string, QuestAttachment[]>();
+  questIds: number[]
+): Promise<Map<number, QuestAttachment[]>> => {
+  const result = new Map<number, QuestAttachment[]>();
   if (questIds.length === 0) return result;
 
   const placeholders = questIds.map(() => '?').join(', ');
@@ -53,26 +52,24 @@ export const findAttachmentsByQuestIds = async (
 };
 
 export const insertAttachment = async (data: {
-  questId: string;
+  questId: number;
   type: QuestAttachmentType;
   name: string;
   path: string;
 }): Promise<QuestAttachment> => {
-  const id = randomUUID();
-
-  await pool.query(
-    'INSERT INTO quest_attachments (id, quest_id, type, name, path) VALUES (?, ?, ?, ?, ?)',
-    [id, data.questId, data.type, data.name, data.path]
+  const [result] = await pool.query<ResultSetHeader>(
+    'INSERT INTO quest_attachments (quest_id, type, name, path) VALUES (?, ?, ?, ?)',
+    [data.questId, data.type, data.name, data.path]
   );
 
   const [rows] = await pool.query<AttachmentRow[]>(
     'SELECT * FROM quest_attachments WHERE id = ? LIMIT 1',
-    [id]
+    [result.insertId]
   );
   return toAttachment(rows[0]);
 };
 
-export const deleteAttachment = async (id: string): Promise<boolean> => {
+export const deleteAttachment = async (id: number): Promise<boolean> => {
   const [result] = await pool.query<ResultSetHeader>(
     'DELETE FROM quest_attachments WHERE id = ?',
     [id]
@@ -81,7 +78,7 @@ export const deleteAttachment = async (id: string): Promise<boolean> => {
 };
 
 export const deleteAttachmentsByQuestId = async (
-  questId: string
+  questId: number
 ): Promise<void> => {
   await pool.query('DELETE FROM quest_attachments WHERE quest_id = ?', [
     questId,

@@ -35,7 +35,7 @@ export const WaypointEditModal = ({
   onClose,
 }: {
   waypoint: Waypoint;
-  onSave: (id: string, data: WaypointUpdateData) => void;
+  onSave: (id: number, data: WaypointUpdateData) => void;
   onClose: () => void;
 }): ReactNode => {
   const [title, setTitle] = useState(waypoint.title);

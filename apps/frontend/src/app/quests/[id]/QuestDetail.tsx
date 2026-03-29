@@ -93,8 +93,8 @@ const WaypointCard = ({
   onDelete,
 }: {
   waypoint: Waypoint;
-  onUpdate: (id: string, data: { title: string; description: string }) => void;
-  onDelete: (id: string) => void;
+  onUpdate: (id: number, data: { title: string; description: string }) => void;
+  onDelete: (id: number) => void;
 }): ReactNode => {
   const [editing, setEditing] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
@@ -211,7 +211,7 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
   };
 
   const handleUpdateWaypoint = (
-    waypointId: string,
+    waypointId: number,
     data: { title: string; description: string }
   ): void => {
     apiClient
@@ -220,7 +220,7 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
       .catch(() => {});
   };
 
-  const handleDeleteWaypoint = (waypointId: string): void => {
+  const handleDeleteWaypoint = (waypointId: number): void => {
     apiClient
       .delete(`/api/quests/${questId}/waypoints/${waypointId}`)
       .then(() => mutate())
@@ -252,9 +252,7 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
             >
               {statusLabel[quest.status]}
             </span>
-            <span className="text-xs text-zinc-400 font-mono">
-              {quest.id.slice(0, 8)}
-            </span>
+            <span className="text-xs text-zinc-400 font-mono">#{quest.id}</span>
           </div>
           <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
             {quest.title}

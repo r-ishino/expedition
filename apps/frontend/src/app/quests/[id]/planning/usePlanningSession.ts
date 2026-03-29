@@ -25,7 +25,7 @@ export type PlanningSession = {
   cancelJob: () => Promise<void>;
   sendInstruction: () => Promise<void>;
   resetSession: () => Promise<void>;
-  updateWaypoint: (id: string, data: WaypointUpdateData) => void;
+  updateWaypoint: (id: number, data: WaypointUpdateData) => void;
   mutateQuest: () => void;
 };
 
@@ -228,7 +228,7 @@ export const usePlanningSession = (questId: string): PlanningSession => {
     restoredRef.current = true;
   };
 
-  const updateWaypoint = (id: string, data: WaypointUpdateData): void => {
+  const updateWaypoint = (id: number, data: WaypointUpdateData): void => {
     apiClient
       .put(`/api/quests/${questId}/waypoints/${id}`, data)
       .then(() => mutate())

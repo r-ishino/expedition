@@ -1,18 +1,17 @@
-import { randomUUID } from 'node:crypto';
 import type { RowDataPacket } from 'mysql2/promise';
 import { pool } from '~/db';
 
 type CategoryRow = RowDataPacket & {
-  id: string;
-  waypoint_id: string;
+  id: number;
+  waypoint_id: number;
   name: string;
   created_at: Date;
 };
 
 export const findCategoriesByWaypointIds = async (
-  waypointIds: string[]
-): Promise<Map<string, string[]>> => {
-  const result = new Map<string, string[]>();
+  waypointIds: number[]
+): Promise<Map<number, string[]>> => {
+  const result = new Map<number, string[]>();
   if (waypointIds.length === 0) return result;
 
   const placeholders = waypointIds.map(() => '?').join(', ');
@@ -31,23 +30,23 @@ export const findCategoriesByWaypointIds = async (
 };
 
 export const insertCategories = async (
-  waypointId: string,
+  waypointId: number,
   names: string[]
 ): Promise<void> => {
   if (names.length === 0) return;
 
-  const values = names.map((name) => [randomUUID(), waypointId, name]);
-  const placeholders = values.map(() => '(?, ?, ?)').join(', ');
+  const values = names.map((name) => [waypointId, name]);
+  const placeholders = values.map(() => '(?, ?)').join(', ');
   const flat = values.flat();
 
   await pool.query(
-    `INSERT INTO waypoint_categories (id, waypoint_id, name) VALUES ${placeholders}`,
+    `INSERT INTO waypoint_categories (waypoint_id, name) VALUES ${placeholders}`,
     flat
   );
 };
 
 export const deleteCategoriesByWaypointId = async (
-  waypointId: string
+  waypointId: number
 ): Promise<void> => {
   await pool.query('DELETE FROM waypoint_categories WHERE waypoint_id = ?', [
     waypointId,
@@ -55,7 +54,7 @@ export const deleteCategoriesByWaypointId = async (
 };
 
 export const deleteCategoriesByWaypointIds = async (
-  waypointIds: string[]
+  waypointIds: number[]
 ): Promise<void> => {
   if (waypointIds.length === 0) return;
 

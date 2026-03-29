@@ -53,7 +53,7 @@ app.post('/', async (c) => {
 
 // PUT /api/quests/:id — 更新
 app.put('/:id', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const quest = await findQuestById(id);
   if (!quest) {
     return c.json({ error: 'quest not found' }, 404);
@@ -70,7 +70,7 @@ app.put('/:id', async (c) => {
 
 // DELETE /api/quests/:id — 削除（子waypoints も削除）
 app.delete('/:id', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const quest = await findQuestById(id);
   if (!quest) {
     return c.json({ error: 'quest not found' }, 404);
@@ -83,7 +83,7 @@ app.delete('/:id', async (c) => {
 
 // GET /api/quests/:id — 詳細（waypoints含む）
 app.get('/:id', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const quest = await findQuestById(id);
   if (!quest) {
     return c.json({ error: 'quest not found' }, 404);
@@ -95,7 +95,7 @@ app.get('/:id', async (c) => {
 
 // POST /api/quests/:id/jobs — ジョブ実行（jobType で処理を切り替え）
 app.post('/:id/jobs', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const quest = await findQuestById(id);
   if (!quest) {
     return c.json({ error: 'quest not found' }, 404);
@@ -121,7 +121,7 @@ app.post('/:id/jobs', async (c) => {
 
 // POST /api/quests/:id/jobs/:jobId/cancel — ジョブキャンセル
 app.post('/:id/jobs/:jobId/cancel', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const jobId = c.req.param('jobId');
 
   const quest = await findQuestById(id);
@@ -145,19 +145,19 @@ app.post('/:id/jobs/:jobId/cancel', async (c) => {
 
 // GET /api/quests/:id/planning-messages — 計画メッセージ一覧
 app.get('/:id/planning-messages', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const quest = await findQuestById(id);
   if (!quest) {
     return c.json({ error: 'quest not found' }, 404);
   }
 
-  const messages = await findQuestPlanningMessagesByQuestId(id);
+  const messages = await findQuestPlanningMessagesByQuestId(quest.id);
   return c.json(messages);
 });
 
 // DELETE /api/quests/:id/planning-messages — 計画メッセージ全削除
 app.delete('/:id/planning-messages', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const quest = await findQuestById(id);
   if (!quest) {
     return c.json({ error: 'quest not found' }, 404);
@@ -170,7 +170,7 @@ app.delete('/:id/planning-messages', async (c) => {
 
 // GET /api/quests/:id/planning-jobs — 計画ジョブ一覧
 app.get('/:id/planning-jobs', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const quest = await findQuestById(id);
   if (!quest) {
     return c.json({ error: 'quest not found' }, 404);

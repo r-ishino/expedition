@@ -62,7 +62,7 @@ app.post('/', async (c) => {
 });
 
 app.get('/:id', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const territory = await findTerritoryById(id);
   if (!territory) {
     return c.json({ error: 'territory not found' }, 404);
@@ -71,7 +71,7 @@ app.get('/:id', async (c) => {
 });
 
 app.delete('/:id', async (c) => {
-  const id = c.req.param('id');
+  const id = Number(c.req.param('id'));
   const deleted = await deleteTerritory(id);
   if (!deleted) {
     return c.json({ error: 'territory not found' }, 404);

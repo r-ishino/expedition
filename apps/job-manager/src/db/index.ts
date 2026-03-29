@@ -7,14 +7,18 @@ import {
   checkpoints,
   dispatches,
   journals,
+  questAttachments,
   questPlanningJobs,
   questPlanningMessages,
+  questTerritories,
   quests,
   territories,
+  waypointCategories,
+  waypointDependencies,
   waypoints,
 } from './schema';
 
-const pool = mysql.createPool(config.db);
+export const pool = mysql.createPool(config.db);
 
 const schema = {
   camps,
@@ -22,10 +26,14 @@ const schema = {
   checkpoints,
   dispatches,
   journals,
+  questAttachments,
   questPlanningJobs,
   questPlanningMessages,
+  questTerritories,
   quests,
   territories,
+  waypointCategories,
+  waypointDependencies,
   waypoints,
 };
 
