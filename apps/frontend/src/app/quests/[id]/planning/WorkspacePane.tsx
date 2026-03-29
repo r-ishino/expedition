@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Button } from '~/components/ui/button';
 import {
   Dialog,
@@ -187,18 +187,25 @@ export const WorkspacePane = (): ReactNode => {
             </button>
           </div>
         )}
-        <div className="flex h-10 items-center gap-2.5">
-          <input
-            className="h-full flex-1 rounded-md border border-zinc-200 px-3.5 text-[13px] text-zinc-950 placeholder-zinc-400 outline-none focus:border-zinc-400"
+        <div className="flex items-end gap-2.5">
+          <textarea
+            className="min-h-10 max-h-40 flex-1 resize-none rounded-md border border-zinc-200 px-3.5 py-2 text-[13px] text-zinc-950 placeholder-zinc-400 outline-none focus:border-zinc-400"
             disabled={streaming}
             onChange={(e) => setInstruction(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (
+                e.key === 'Enter' &&
+                !e.nativeEvent.isComposing &&
+                (e.ctrlKey || e.metaKey)
+              ) {
                 e.preventDefault();
                 sendInstruction().catch(() => {});
               }
             }}
             placeholder="Claudeに返信..."
+            rows={1}
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- fieldSizing is not yet in CSSProperties
+            style={{ fieldSizing: 'content' } as unknown as CSSProperties}
             value={instruction}
           />
           <button
