@@ -299,7 +299,7 @@ export const QuestInfoPane = (): ReactNode => {
   ): Promise<void> => {
     await updateQuestApi(quest.id, {
       title,
-      description: description || undefined,
+      description: description ?? null,
     });
     mutateQuest();
   };
