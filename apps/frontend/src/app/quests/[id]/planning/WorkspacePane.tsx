@@ -1,24 +1,11 @@
 'use client';
 
-import {
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-  type ReactNode,
-  type Ref,
-} from 'react';
-import type { QuestPlanningMessage } from '@expedition/shared';
-import { useQuests } from '~/hooks/api/useQuests';
-import { useStreamBlocks, type StreamBlock } from '~/hooks/useStreamBlocks';
+import { useRef, type ReactNode } from 'react';
 import { StreamOutput } from '~/components/stream/StreamOutput';
-import { apiClient } from '~/lib/apiClient';
-
-type Message = {
-  role: 'user' | 'assistant';
-  blocks: StreamBlock[];
-  text?: string;
-};
+import {
+  usePlanningSessionContext,
+  type Message,
+} from './PlanningSessionProvider';
 
 const MessageBubble = ({ message }: { message: Message }): ReactNode => {
   const isUser = message.role === 'user';
@@ -50,22 +37,17 @@ const MessageBubble = ({ message }: { message: Message }): ReactNode => {
   );
 };
 
-export type WorkspacePaneHandle = {
-  runJob: (jobType: string, text: string) => Promise<void>;
-};
+export const WorkspacePane = (): ReactNode => {
+  const {
+    messages,
+    blocks,
+    streaming,
+    instruction,
+    setInstruction,
+    cancelJob,
+    sendInstruction,
+  } = usePlanningSessionContext();
 
-export const WorkspacePane = ({
-  questId,
-  onCancel,
-  ref,
-}: {
-  questId: string;
-  onCancel?: () => void;
-  ref?: Ref<WorkspacePaneHandle>;
-}): ReactNode => {
-  const { mutate } = useQuests().useShow(questId);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [instruction, setInstruction] = useState('');
   const streamAreaRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToBottom = (): void => {
@@ -74,139 +56,9 @@ export const WorkspacePane = ({
     }
   };
 
-  const {
-    blocks,
-    streaming,
-    startStream,
-    cancel: rawCancel,
-  } = useStreamBlocks({
-    questId,
-    onDone: (_event, finalBlocks) => {
-      // ストリーム完了時にブロックをメッセージ履歴に追加
-      // blocksRef 経由で取得するため、Reactバッチ処理の影響を受けない
-      if (finalBlocks.length > 0) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', blocks: finalBlocks },
-        ]);
-      }
-      setTimeout(() => {
-        mutate().catch(() => {});
-      }, 1000);
-    },
-  });
-
-  const cancelAndNotify = async (): Promise<void> => {
-    await rawCancel();
-    onCancel?.();
-  };
-
-  // Esc キーでキャンセル
-  useEffect(() => {
-    if (!streaming) return;
-
-    const handleCancel = async (): Promise<void> => {
-      await rawCancel();
-      onCancel?.();
-    };
-
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        handleCancel().catch(() => {});
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return (): void => window.removeEventListener('keydown', handleKeyDown);
-  }, [streaming, rawCancel, onCancel]);
-
-  // マウント時に会話メッセージを復元
-  const restoredRef = useRef(false);
-  useEffect(() => {
-    if (restoredRef.current) return;
-    restoredRef.current = true;
-
-    apiClient
-      .fetch<QuestPlanningMessage[]>(`/api/quests/${questId}/planning-messages`)
-      .then((msgs) => {
-        if (msgs.length === 0) return;
-
-        const restored: Message[] = [];
-        let lastAssistantJobId: string | null = null;
-
-        for (const msg of msgs) {
-          if (msg.role === 'user') {
-            restored.push({
-              role: 'user',
-              blocks: [],
-              text: msg.content ?? '',
-            });
-          } else if (msg.role === 'assistant' && msg.runtimeJobId) {
-            lastAssistantJobId = msg.runtimeJobId;
-            // 最後の assistant 以外は placeholder（startStream の onDone で埋まらないため空）
-            restored.push({ role: 'assistant', blocks: [] });
-          }
-        }
-
-        // 最後の assistant メッセージ以外を先に表示
-        // 最後の assistant はストリーム再接続で復元するため除外
-        if (lastAssistantJobId) {
-          setMessages(restored.slice(0, -1));
-          startStream(lastAssistantJobId);
-        } else {
-          setMessages(restored);
-        }
-      })
-      .catch(() => {
-        // 復元失敗は無視
-      });
-  }, [questId, startStream]);
-
-  // blocks 変更時にスクロール
   if (streaming) {
     setTimeout(scrollToBottom, 0);
   }
-
-  const startJob = async (jobType: string, text: string): Promise<void> => {
-    if (!text) return;
-
-    setMessages((prev) => [...prev, { role: 'user', blocks: [], text }]);
-    setInstruction('');
-
-    try {
-      const { jobId } = await apiClient.post<{ jobId: string }>(
-        `/api/quests/${questId}/jobs`,
-        { jobType, instruction: text }
-      );
-      startStream(jobId);
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          blocks: [
-            {
-              index: 0,
-              blockType: 'text',
-              content: err instanceof Error ? err.message : 'Unknown error',
-              completed: true,
-              turnIndex: 0,
-            },
-          ],
-        },
-      ]);
-    }
-  };
-
-  const sendInstruction = async (): Promise<void> => {
-    const text = instruction.trim();
-    if (!text) return;
-    await startJob('freeform', text);
-  };
-
-  useImperativeHandle(ref, () => ({
-    runJob: (jobType: string, text: string): Promise<void> =>
-      startJob(jobType, text),
-  }));
 
   return (
     <div className="flex h-full flex-col">
@@ -272,7 +124,7 @@ export const WorkspacePane = ({
             <button
               className="text-xs text-zinc-400 hover:text-zinc-600"
               onClick={() => {
-                cancelAndNotify().catch(() => {});
+                cancelJob().catch(() => {});
               }}
               type="button"
             >
