@@ -1,6 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { Skeleton } from '~/components/ui/skeleton';
+import { useIdleTimer } from '~/hooks/useIdleTimer';
 import type { StreamBlock } from '~/hooks/useStreamBlocks';
 import { TextBlock } from './TextBlock';
 import { WorkGroup } from './WorkGroup';
@@ -73,11 +75,14 @@ const UnitRenderer = ({ unit }: { unit: DisplayUnit }): ReactNode => {
 export const StreamOutput = ({
   blocks,
   streaming,
+  lastEventTime = 0,
 }: {
   blocks: StreamBlock[];
   streaming: boolean;
+  lastEventTime?: number;
 }): ReactNode => {
   const units = groupBlocks(blocks, streaming);
+  const idleSeconds = useIdleTimer(streaming, lastEventTime);
 
   if (blocks.length === 0 && !streaming) return null;
 
@@ -97,6 +102,18 @@ export const StreamOutput = ({
         <div className="flex items-center gap-2 py-2 text-xs text-zinc-400">
           <span className="h-2 w-2 animate-pulse rounded-full bg-yellow-500" />
           応答を待機中...
+        </div>
+      )}
+      {streaming && blocks.length > 0 && idleSeconds > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-3 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+            処理中... ({String(idleSeconds)}s)
+          </div>
         </div>
       )}
     </div>

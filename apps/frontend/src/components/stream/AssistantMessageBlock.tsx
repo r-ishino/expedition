@@ -6,9 +6,11 @@ import { StreamOutput } from './StreamOutput';
 
 export const AssistantMessageBlock = ({
   blocks,
+  lastEventTime,
   streaming = false,
 }: {
   blocks: StreamBlock[];
+  lastEventTime?: number;
   streaming?: boolean;
 }): ReactNode => (
   <div className="flex gap-3">
@@ -19,7 +21,11 @@ export const AssistantMessageBlock = ({
       <span className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">
         Claude
       </span>
-      <StreamOutput blocks={blocks} streaming={streaming} />
+      <StreamOutput
+        blocks={blocks}
+        lastEventTime={lastEventTime}
+        streaming={streaming}
+      />
     </div>
   </div>
 );

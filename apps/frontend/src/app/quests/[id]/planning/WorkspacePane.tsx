@@ -19,6 +19,7 @@ export const WorkspacePane = (): ReactNode => {
     messages,
     blocks,
     streaming,
+    lastEventTime,
     instruction,
     setInstruction,
     cancelJob,
@@ -132,7 +133,11 @@ export const WorkspacePane = (): ReactNode => {
               )
             )}
             {streaming && blocks.length > 0 && (
-              <AssistantMessageBlock blocks={blocks} streaming />
+              <AssistantMessageBlock
+                blocks={blocks}
+                lastEventTime={lastEventTime}
+                streaming
+              />
             )}
           </>
         )}

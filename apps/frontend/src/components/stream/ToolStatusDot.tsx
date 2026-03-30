@@ -47,21 +47,27 @@ const ErrorDot = (): ReactNode => (
 
 export const ToolStatusDot = ({
   completed,
+  completedAt,
   status,
 }: {
   completed: boolean;
+  completedAt?: string;
   status?: 'success' | 'error';
 }): ReactNode => {
   const s = deriveStatus(completed, status);
 
-  switch (s) {
-    case 'running':
-      return <RunningDot />;
-    case 'success':
-      return <SuccessDot />;
-    case 'error':
-      return <ErrorDot />;
-  }
+  return (
+    <span className="ml-auto flex items-center gap-1">
+      {completedAt && (
+        <span className="text-[10px] tabular-nums text-zinc-400">
+          {completedAt}
+        </span>
+      )}
+      {s === 'running' && <RunningDot />}
+      {s === 'success' && <SuccessDot />}
+      {s === 'error' && <ErrorDot />}
+    </span>
+  );
 };
 
 /** グループ内で最も深刻なステータスを返す */

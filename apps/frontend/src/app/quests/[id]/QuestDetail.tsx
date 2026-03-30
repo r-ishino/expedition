@@ -190,13 +190,14 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
   const [instruction, setInstruction] = useState('');
   const [sentInstruction, setSentInstruction] = useState<string | null>(null);
 
-  const { blocks, streaming, startStream, reset } = useStreamBlocks({
-    onDone: () => {
-      setTimeout(() => {
-        mutate().catch(() => {});
-      }, 1000);
-    },
-  });
+  const { blocks, streaming, lastEventTime, startStream, reset } =
+    useStreamBlocks({
+      onDone: () => {
+        setTimeout(() => {
+          mutate().catch(() => {});
+        }, 1000);
+      },
+    });
 
   const decompose = async (): Promise<void> => {
     reset();
@@ -306,7 +307,11 @@ export const QuestDetail = ({ questId }: { questId: string }): ReactNode => {
                 <span className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">
                   Claude
                 </span>
-                <StreamOutput blocks={blocks} streaming={streaming} />
+                <StreamOutput
+                  blocks={blocks}
+                  lastEventTime={lastEventTime}
+                  streaming={streaming}
+                />
               </div>
             </div>
           </div>
