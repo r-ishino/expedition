@@ -19,6 +19,7 @@ export type PlanningSession = {
   blocks: StreamBlock[];
   decomposing: boolean;
   streaming: boolean;
+  lastEventTime: number;
   instruction: string;
   setInstruction: (value: string) => void;
   startDecompose: () => Promise<void>;
@@ -46,6 +47,7 @@ export const usePlanningSession = (questId: string): PlanningSession => {
   const {
     blocks,
     streaming,
+    lastEventTime,
     startStream,
     cancel: rawCancel,
   } = useStreamBlocks({
@@ -259,6 +261,7 @@ export const usePlanningSession = (questId: string): PlanningSession => {
     blocks,
     decomposing,
     streaming,
+    lastEventTime,
     instruction,
     setInstruction,
     startDecompose,

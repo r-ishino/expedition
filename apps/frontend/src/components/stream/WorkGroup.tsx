@@ -76,7 +76,13 @@ export const WorkGroup = ({ blocks }: { blocks: StreamBlock[] }): ReactNode => {
         <span className="truncate text-zinc-400 dark:text-zinc-500">
           {summary}
         </span>
-        <ToolStatusDot completed={worst.completed} status={worst.status} />
+        <ToolStatusDot
+          completed={worst.completed}
+          completedAt={
+            worst.completed ? blocks[blocks.length - 1].completedAt : undefined
+          }
+          status={worst.status}
+        />
       </button>
       {expanded && (
         <div className="flex flex-col gap-1 border-t border-zinc-200 p-2 dark:border-zinc-700">

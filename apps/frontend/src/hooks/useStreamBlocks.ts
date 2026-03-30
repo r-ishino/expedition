@@ -15,6 +15,7 @@ export type StreamBlock = {
   toolName?: string;
   toolUseId?: string;
   completed: boolean;
+  completedAt?: string;
   status?: 'success' | 'error';
   turnIndex: number;
 };
@@ -30,6 +31,7 @@ type BlockStartPayload = {
 type UseStreamBlocksReturn = {
   blocks: StreamBlock[];
   streaming: boolean;
+  lastEventTime: number;
   startStream: (jobId: string) => void;
   cancel: () => Promise<void>;
   reset: () => void;
@@ -42,6 +44,7 @@ export const useStreamBlocks = (options?: {
 }): UseStreamBlocksReturn => {
   const [blocks, setBlocks] = useState<StreamBlock[]>([]);
   const [streaming, setStreaming] = useState(false);
+  const [lastEventTime, setLastEventTime] = useState(0);
   const esRef = useRef<EventSource | null>(null);
   const jobIdRef = useRef<string | null>(null);
   // Reactバッチ処理の影響を受けずに最新のブロックを参照するためのref
@@ -55,6 +58,7 @@ export const useStreamBlocks = (options?: {
     setBlocks([]);
     blocksRef.current = [];
     setStreaming(false);
+    setLastEventTime(0);
   };
 
   const cancel = async (): Promise<void> => {
@@ -81,11 +85,13 @@ export const useStreamBlocks = (options?: {
     reset();
     jobIdRef.current = jobId;
     setStreaming(true);
+    setLastEventTime(Date.now());
 
     const es = new EventSource(apiClient.streamUrl(jobId));
     esRef.current = es;
 
     es.addEventListener('block_start', (e: MessageEvent<string>) => {
+      setLastEventTime(Date.now());
       const data = apiClient.parseJson<BlockStartPayload>(e.data);
       updateBlocks((prev) => [
         ...prev,
@@ -102,6 +108,7 @@ export const useStreamBlocks = (options?: {
     });
 
     es.addEventListener('block_delta', (e: MessageEvent<string>) => {
+      setLastEventTime(Date.now());
       const data = apiClient.parseJson<JobStreamBlockDelta>(e.data);
       updateBlocks((prev) => {
         const targetIdx = prev.findLastIndex((b) => b.index === data.index);
@@ -117,7 +124,14 @@ export const useStreamBlocks = (options?: {
     });
 
     es.addEventListener('block_stop', (e: MessageEvent<string>) => {
+      setLastEventTime(Date.now());
       const data = apiClient.parseJson<JobStreamBlockStop>(e.data);
+      const completedAt = new Date().toLocaleTimeString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
       updateBlocks((prev) => {
         const targetIdx = prev.findLastIndex((b) => b.index === data.index);
         if (targetIdx === -1) return prev;
@@ -126,6 +140,7 @@ export const useStreamBlocks = (options?: {
         updated[targetIdx] = {
           ...updated[targetIdx],
           completed: true,
+          completedAt,
           status: data.status,
         };
         return updated;
@@ -158,5 +173,5 @@ export const useStreamBlocks = (options?: {
     };
   };
 
-  return { blocks, streaming, startStream, cancel, reset };
+  return { blocks, streaming, lastEventTime, startStream, cancel, reset };
 };
