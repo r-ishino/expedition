@@ -47,10 +47,11 @@ const remove = async (waypointId: number): Promise<void> => {
 // --- Tool registration ---
 
 export const registerWaypointTools = (server: McpServer): void => {
-  server.tool(
+  server.registerTool(
     'list_waypoints',
-    'List all waypoints for the current quest',
-    {},
+    {
+      description: 'List all waypoints for the current quest',
+    },
     async () => {
       const result = await list();
       return {
@@ -61,21 +62,23 @@ export const registerWaypointTools = (server: McpServer): void => {
     }
   );
 
-  server.tool(
+  server.registerTool(
     'create_waypoint',
-    'Create a new waypoint for the current quest',
     {
-      title: z.string().describe('Waypoint title'),
-      description: z.string().optional().describe('Detailed description'),
-      estimate: z
-        .string()
-        .optional()
-        .describe('Estimated change size (e.g. "~50 lines")'),
-      uncertainty: z.string().optional().describe('Uncertainties or risks'),
-      categories: z
-        .array(z.string())
-        .optional()
-        .describe('Categories (e.g. "schema", "backend", "frontend")'),
+      description: 'Create a new waypoint for the current quest',
+      inputSchema: {
+        title: z.string().describe('Waypoint title'),
+        description: z.string().optional().describe('Detailed description'),
+        estimate: z
+          .string()
+          .optional()
+          .describe('Estimated change size (e.g. "~50 lines")'),
+        uncertainty: z.string().optional().describe('Uncertainties or risks'),
+        categories: z
+          .array(z.string())
+          .optional()
+          .describe('Categories (e.g. "schema", "backend", "frontend")'),
+      },
     },
     async (params) => {
       const result = await create(params);
@@ -87,21 +90,27 @@ export const registerWaypointTools = (server: McpServer): void => {
     }
   );
 
-  server.tool(
+  server.registerTool(
     'update_waypoint',
-    'Update an existing waypoint',
     {
-      waypointId: z.number().describe('ID of the waypoint'),
-      title: z.string().optional().describe('New title'),
-      description: z.string().optional().describe('New description'),
-      status: z
-        .enum(['pending', 'approved', 'reviewing'])
-        .optional()
-        .describe('New status'),
-      estimate: z.string().nullable().optional().describe('New estimate'),
-      uncertainty: z.string().nullable().optional().describe('New uncertainty'),
-      sortOrder: z.number().optional().describe('New sort order'),
-      categories: z.array(z.string()).optional().describe('New categories'),
+      description: 'Update an existing waypoint',
+      inputSchema: {
+        waypointId: z.number().describe('ID of the waypoint'),
+        title: z.string().optional().describe('New title'),
+        description: z.string().optional().describe('New description'),
+        status: z
+          .enum(['pending', 'approved', 'reviewing'])
+          .optional()
+          .describe('New status'),
+        estimate: z.string().nullable().optional().describe('New estimate'),
+        uncertainty: z
+          .string()
+          .nullable()
+          .optional()
+          .describe('New uncertainty'),
+        sortOrder: z.number().optional().describe('New sort order'),
+        categories: z.array(z.string()).optional().describe('New categories'),
+      },
     },
     async ({ waypointId, ...data }) => {
       const result = await update(waypointId, data);
@@ -113,11 +122,13 @@ export const registerWaypointTools = (server: McpServer): void => {
     }
   );
 
-  server.tool(
+  server.registerTool(
     'delete_waypoint',
-    'Delete a waypoint',
     {
-      waypointId: z.number().describe('ID of the waypoint'),
+      description: 'Delete a waypoint',
+      inputSchema: {
+        waypointId: z.number().describe('ID of the waypoint'),
+      },
     },
     async ({ waypointId }) => {
       await remove(waypointId);
